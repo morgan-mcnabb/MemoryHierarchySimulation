@@ -13,19 +13,19 @@
 #include <string>
 #include <string.h>
 
-struct DTLB
+struct DTLB_config
 {
     unsigned int num_entries;
 };
 
-struct page_table
+struct page_table_config
 {
     unsigned int num_virtual_pages;
     unsigned int num_physical_pages;
     unsigned int page_size;
 };
 
-struct data_cache
+struct data_cache_config
 {   
     unsigned int num_entries;
     unsigned int set_size;
@@ -35,9 +35,9 @@ struct data_cache
     bool TLB;
 };
 
-DTLB TLB;
-page_table page_table;
-data_cache cache;
+DTLB_config TLB;
+page_table_config page_table;
+data_cache_config cache;
 
 int convert_config_data(std::string line)
 {
