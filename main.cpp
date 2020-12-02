@@ -10,9 +10,9 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
-#include <string>
 #include <string.h>
 #include <cache.h>
+#include "TLBuffer.h"
 
 struct DTLB_config
 {
