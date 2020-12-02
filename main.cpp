@@ -99,27 +99,6 @@ void parse_config(std::string filename)
 
 int main()
 {
-    TLBuffer p(5);  
-    
-    p.insert(1,1);
-    p.insert(2,2);
-    p.insert(3,3);
-    p.insert(4,4);
-    p.insert(5,5);
-
-    std::deque<int> dq = p.lru_entries;
-    for(auto it = dq.begin(); it != dq.end(); ++it)
-        std::cout << ' ' << *it << std::endl;
-
-
-    p.lookup(3);
-    p.lookup(1);
-    p.lookup(5);
-
-    
-    dq = p.lru_entries;
-    for(auto it = dq.begin(); it != dq.end(); ++it)
-        std::cout << ' ' << *it << std::endl;
-
+    parse_config("trace.config");
     return 0;
 }
