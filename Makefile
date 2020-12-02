@@ -1,16 +1,11 @@
-OBJS = main.o
-SOURCE = main.cpp
-#HEADER = 
-OUT = project
-CC = g++
-FLAGS = -g -c -Wall
-#LFLAGS = 
-
-all: $(OBJS)
-	$(CC) -g $(OBJS) -o $(OUT) 
+project: main.o TLBuffer.o
+	g++ -g -Wall main.o TLBuffer.o -o project
 
 main.o: main.cpp
-	$(CC) $(FLAGS) main.cpp
+	g++ -c main.cpp
+
+TLBuffer.o: TLBuffer.cpp TLBuffer.h
+	g++ -c TLBuffer.cpp
 
 clean:
-	rm -f $(OBJS) $(OUT)
+	rm *.o project
