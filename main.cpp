@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <string>
 #include <string.h>
+#include <cache.h>
 
 struct DTLB_config
 {
