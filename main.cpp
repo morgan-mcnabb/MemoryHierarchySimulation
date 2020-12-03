@@ -12,7 +12,8 @@
 #include <algorithm>
 #include <string>
 #include <string.h>
-#include "TLBuffer.h"
+//#include "TLBuffer.h"
+#include "page_table.cpp"
 
 struct DTLB_config
 {
@@ -100,5 +101,6 @@ void parse_config(std::string filename)
 int main()
 {
     parse_config("trace.config");
+    page_table::page_table dude(num_virtual_pages, num_physical_pages, page_size);
     return 0;
 }

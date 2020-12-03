@@ -1,11 +1,10 @@
-project: main.o TLBuffer.o
-	g++ -g -Wall main.o TLBuffer.o -o project
+all : main.o
+	.PHONY : all
 
-main.o: main.cpp
-	g++ -c main.cpp
-
-TLBuffer.o: TLBuffer.cpp TLBuffer.h
-	g++ -c TLBuffer.cpp
+main.o : main.cpp 
+		g++ -g main.cpp page_table.cpp pte.cpp -o main.o
 
 clean:
-	rm *.o project
+		rm *.o
+			rm *.txt
+
