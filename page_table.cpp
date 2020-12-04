@@ -1,46 +1,34 @@
 /////////////////////////////////////////////////////////////
 //  Authors: Alec Hamaker, Morgan McNabb, Alexander Wittman
-//  File: main.cpp
+//  File: page_table.cpp
 //  Class: CSCI-4727-940 Operating Systems
 //  Due Date: December 9, 2020
 //  Start Date: December 2, 2020
-//  Last Updated: December 2, 2020
+//  Last Updated: December 3, 2020
 ///////////////////////////////////////////////////////////////
-#include "pte.cpp"
-#include <ctime>
-#include <bits/stdc++.h>
+#include "page_table.h"
 
-class page_table
-{
-    public:
-        int virtual_page_count;
-        int valid_pte_count = 0;
-        int phys_frame_index = 0;
-        int phys_frame_max;
-        pte entries[];
-
-        page_table(int _virt_page_count, int _phys_page_count, int page_size);
-
-        int lookup(int virtual_page);
-};
-
-
-page_table::page_table(int _virt_page_count, int _phys_page_count, int page_size)
+page_table::page_table(int _virt_page_count, int _phys_frame_count, int page_size)
 {
     virtual_page_count = _virt_page_count;
-    phys_frame_max = (_phys_page_count * page_size) - 1; 
+    phys_frame_count = _phys_frame_count;
     for(int i = 0; i < virtual_page_count; i++)
     {
         pte tmp;
         tmp.phys_frame_num = -1;
         tmp.valid_bit = false;
         tmp.dirty_bit = false;
-        entries[i] = tmp;
+        tmp.time_accessed = time(0);
+        entries.push_back(tmp);
     }
 }
 
+//returns -1 on a miss, returns -2 if out of range
 int page_table::lookup(int virtual_page)
 {
+    if(virtual_page > virtual_page_count-1)//if virtual page out of bounds
+        return -2;
+
     if(entries[virtual_page].valid_bit)
     { 
         entries[virtual_page].time_accessed = time(0);
@@ -48,11 +36,12 @@ int page_table::lookup(int virtual_page)
     }
     else//if the physical frame number isnt valid...
     {
-        if(phys_frame_index < phys_frame_max)//there is a free spot in memory...
+        if(valid_pte_count < phys_frame_count)//there is a free spot in memory.
         {
             entries[virtual_page].phys_frame_num = phys_frame_index;
             phys_frame_index++;
             entries[virtual_page].valid_bit = true;
+            valid_pte_count++;
             entries[virtual_page].time_accessed = time(0);
         }
         else//we have to evict here
@@ -71,7 +60,8 @@ int page_table::lookup(int virtual_page)
 
             entries[eviction_index].valid_bit = false;//evict the least recently used pte
             entries[virtual_page].valid_bit = true;
-            entries[virtual_page].phys_frame_num = entries[eviction_index].phys_frame_num;//I could be assigning the 
+            entries[virtual_page].phys_frame_num = 
+                entries[eviction_index].phys_frame_num;//I could be assigning the 
             //wrong frame number here???
             entries[virtual_page].time_accessed = time(0); 
         }
