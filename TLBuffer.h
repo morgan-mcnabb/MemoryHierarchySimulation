@@ -11,6 +11,7 @@
 
 #include <deque>
 #include <map>
+#include "pte.h"
 
 class TLBuffer
 {
@@ -26,10 +27,12 @@ public:
     TLBuffer(int capacity);
     bool lookup(int virtual_page_number);
     void insert(int virtual_page_number, int physical_frame_number);
+    void invalidate(int virtual_page_number);
 
 private:
     // the current size of the TLB
     int size;
+    void remove_lru_entry(int virtual_page_number);
 };
 
 #endif
