@@ -6,6 +6,7 @@
 #define MEMORYHIERARCHYSIMULATION_CACHE_H
 
 #include <cmath>
+
 class DataCache
 {
 private:
@@ -202,6 +203,11 @@ public:
 
     }
 
+    ~DataCache()
+    {
+        free(cache);
+    }
+
     bool read(unsigned int physicalAddress)
     {
         return checkCache(physicalAddress, false);
@@ -210,11 +216,6 @@ public:
     bool write(unsigned int physicalAddress)
     {
         return checkCache(physicalAddress, true);
-    }
-
-    void freeDataCache()
-    {
-        free(cache);
     }
 };
 #endif //MEMORYHIERARCHYSIMULATION_CACHE_H
