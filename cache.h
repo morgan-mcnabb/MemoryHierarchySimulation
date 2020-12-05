@@ -64,10 +64,6 @@ private:
 
         tag = getTag(physicalAddress);
 
-        printf("Index: %x\n", index);
-
-        printf("Tag: %x\n", tag);
-
         //Add valid and dirty bits to the physical address
         uint64_t addAddress = 0x2;
         addAddress = addAddress << (address_size);
@@ -187,13 +183,13 @@ private:
 
 public:
 
-    DataCache(int numEntries,int setSize,int lineSize, bool writeThroughNoWriteAllocate, int addressSize)
+    DataCache(int numEntries,int setSize,int lineSize, bool writeThroughNoWriteAllocate, int pageSize, int numberOfPhysicalPages)
     {
         num_entries = numEntries;
         set_size = setSize;
         line_size = lineSize;
         write_through_no_write_allocate = writeThroughNoWriteAllocate;
-        address_size = addressSize;
+        address_size = log2(pageSize) + log2(numberOfPhysicalPages);
 
         total_index_bits = log2(set_size);
         total_offset_bits = log2(line_size);
@@ -216,6 +212,21 @@ public:
     bool write(unsigned int physicalAddress)
     {
         return checkCache(physicalAddress, true);
+    }
+
+    int getTotalIndexBits()
+    {
+        return total_index_bits;
+    }
+
+    int getTotalTagBits()
+    {
+        return total_tag_bits;
+    }
+
+    int getTotalOffsetBits()
+    {
+        return total_offset_bits;
     }
 };
 #endif //MEMORYHIERARCHYSIMULATION_CACHE_H
