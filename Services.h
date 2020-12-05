@@ -72,23 +72,101 @@ void parse_config(std::string filename)
         {
             case 2:
                 TLB_c.num_entries = convert_config_data(line);
+                if(TLB_c.num_entries < 1 || TLB_c.num_entries > 256)
+                {
+                    std::cout << "Error: DTLB Number of Entries must be between 1 and 256. Received "
+                              << TLB_c.num_entries << ". Exiting..." << std::endl;
+                    exit(-1);
+                }
+                else if((TLB_c.num_entries & (TLB_c.num_entries - 1)) != 0)
+                {
+                    std::cout << "Error: DTLB Number of Entries must be a power of 2. Received " 
+                              << TLB_c.num_entries << ". Exiting..." << std::endl;
+                    exit(-1);
+                }
                 break;
             case 5:
                 page_table_c.num_virtual_pages = convert_config_data(line);
+                if(page_table_c.num_virtual_pages < 1 || page_table_c.num_virtual_pages > 8192)
+                {
+                    std::cout << "Error: Page Table number of virtual pages must be between 1 and 8192. Received "
+                              << page_table_c.num_virtual_pages << ". Exiting..." << std::endl;
+                    exit(-1);
+                }
+                else if((page_table_c.num_virtual_pages & (page_table_c.num_virtual_pages - 1)) != 0)
+                {
+                    std::cout << "Error: Page Table number of virtual pages must be a power of 2. Received "
+                              << page_table_c.num_virtual_pages << ". Exiting..." << std::endl;
+                    exit(-1);
+                }
                 break;
             case 6:
                 page_table_c.num_physical_pages = convert_config_data(line);
+                if(page_table_c.num_physical_pages < 1 || page_table_c.num_physical_pages > 1024)
+                {
+                    std::cout << "Error: Page Table number of physical pages must be between 1 and 1024. Received "
+                              << page_table_c.num_physical_pages << ". Exiting..." << std::endl;
+                    exit(-1);
+                }
+                else if((page_table_c.num_physical_pages & (page_table_c.num_physical_pages - 1)) != 0)
+                {
+                    std::cout << "Error: Page Table number of physical pages must a power of 2. Received "
+                              << page_table_c.num_physical_pages << ". Exiting..." << std::endl;
+                    exit(-1);
+                }
                 break;
             case 7:
                 page_table_c.page_size = convert_config_data(line);
+                if(page_table_c.page_size % 2 != 0)
+                {
+                    std::cout << "Error: Page Table page size must be a power of two. Received "
+                              << page_table_c.page_size << ". Exiting..." << std::endl;
+                    exit(-1);
+                }
             case 10:
                 cache.num_entries = convert_config_data(line);
+                if(cache.num_entries < 1 || cache.num_entries > 1024)
+                {
+                    std::cout << "Error: Cache number of entries must be between 1 and 1024. Received " 
+                              << cache.num_entries << ". Exiting..." << std::endl;
+                    exit(-1);
+                }
+                else if((cache.num_entries & (cache.num_entries -1)) != 0)
+                {
+                    std::cout << "Error: Cache number of entries must be a power of 2. Received " 
+                              << cache.num_entries << ". Exiting..." << std::endl;
+                    exit(-1);
+                }
                 break;
             case 11:
                 cache.set_size = convert_config_data(line);
+                if(cache.set_size < 1 || cache.set_size > 8)
+                {
+                    std::cout << "Error: Cache set size must be between 1 and 8. Received " 
+                              << cache.set_size << std::endl;
+                    exit(-1);
+                }
+                else if((cache.set_size & (cache.set_size - 1)) != 0)
+                {
+                    std::cout << "Error: Cache set size must be a power of 2. Received "
+                              << cache.set_size << std::endl;
+                    exit(-1);
+                }
                 break;
             case 12:
                 cache.line_size = convert_config_data(line);
+                if(cache.line_size < 8)
+                {
+                    std::cout << "Error: Cache line size has a minimum value of 8. Received "
+                              << cache.line_size << std::endl;
+                    exit(-1);
+                }
+                else if((cache.line_size & (cache.line_size - 1)) != 0)
+                {
+                    std::cout << "Error: Cache line size must be a power of 2. Received " 
+                              << cache.line_size << std::endl;
+                    exit(-1);
+                }
                 break;
                 
             // for the next three cases, 121 is 'y' in ascii
