@@ -8,6 +8,7 @@
 #include <string.h>
 #include <vector>
 #include "TLBuffer.h"
+#include "page_table.h"
 
 struct DTLB_config
 {
@@ -44,7 +45,6 @@ data_cache_config cache;
 std::vector<trace> traces;
 
 
-
 int convert_config_data(std::string line)
 {
     // find the delimiter and remove all spaces
@@ -71,7 +71,7 @@ void parse_config(std::string filename)
         switch(file_line_number)
         {
             case 2:
-                TLB.num_entries = convert_config_data(line);
+                TLB_c.num_entries = convert_config_data(line);
                 break;
             case 5:
                 page_table_c.num_virtual_pages = convert_config_data(line);
@@ -123,6 +123,7 @@ void parse_traces(std::string filename)
         hexx = std::stol(virtual_address, nullptr, 16);
         page_offset = hexx & offset_mask;
         page_number = hexx & page_number_mask;
+        page_number = page_number >> (int)std::log2(page_table_c.page_size);
 
         trace tmp;
         tmp.page_offset = page_offset;
@@ -139,26 +140,47 @@ void parse_traces(std::string filename)
 
 void track_traces()
 {
-    if(traces.capacity() > 0)
+    if(traces.size() > 0)
     {
         //start
         TLBuffer TLB(TLB_c.num_entries);
-        //create a page table here
-        for(int i = 0; i < (int)traces.capacity(); i++)
+        page_table PT(page_table_c.num_virtual_pages, 
+                page_table_c.num_physical_pages, page_table_c.page_size);
+        for(int i = 0; i < (int)traces.size(); i++)
         {
             bool TLB_hit = TLB.lookup(traces[i].page_number);
             if(TLB_hit)
             {
                 //just output forehead?
                 //figure out what we are supposed to do with the Data cache here
-                std::cout << "TLB: hit." << std::endl;
+                std::cout << "TLB: hit. For virt page: " + 
+                    to_string(traces[i].page_number) << std::endl;
             }
             else
             {
                 std::cout << "TLB: miss.\t";
                 //lookup the page in the PT here..
+                int PT_hit = PT.lookup(traces[i].page_number);
+                if(PT_hit < 0)//if PT misses
+                {
+                    int phys_frame_num = PT.lookup(traces[i].page_number);
+                    std::cout << "Inserting phys frame: " + to_string(phys_frame_num) << "\t";
+                    TLB.insert(traces[i].page_number, phys_frame_num);
+                    std::cout << "Page Table: miss.\t";
+                    //figure out what we are supposed to do with the Data cache 
+                    //here
+                    
+                }
+                else
+                {
+                    std::cout << "Inserting phys frame: " + to_string(PT_hit) << "\t";
+                    TLB.insert(traces[i].page_number, PT_hit);
+                    std::cout << "Page Table: hit.\t";
+                    //figure out what the data cache is supposed to do
+                }
 
-                
+                std::cout << "For virtual page: " 
+                    + to_string(traces[i].page_number) << endl;
             }
         }
     }

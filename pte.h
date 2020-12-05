@@ -1,3 +1,6 @@
+#ifndef PTE_H
+#define PTE_H
+
 class pte
 {
     public:
@@ -6,3 +9,5 @@ class pte
         bool dirty_bit;
         int time_accessed;
 };
+
+#endif
