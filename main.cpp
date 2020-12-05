@@ -13,6 +13,7 @@
 #include <string.h>
 #include <cache.h>
 #include "TLBuffer.h"
+#include "page_table.cpp"
 
 struct DTLB_config
 {
@@ -37,7 +38,7 @@ struct data_cache_config
 };
 
 DTLB_config TLB;
-page_table_config page_table;
+page_table_config page_table_c;
 data_cache_config cache;
 
 int convert_config_data(std::string line)
@@ -66,13 +67,13 @@ void parse_config(std::string filename)
                 TLB.num_entries = convert_config_data(line);
                 break;
             case 5:
-                page_table.num_virtual_pages = convert_config_data(line);
+                page_table_c.num_virtual_pages = convert_config_data(line);
                 break;
             case 6:
-                page_table.num_physical_pages = convert_config_data(line);
+                page_table_c.num_physical_pages = convert_config_data(line);
                 break;
             case 7:
-                page_table.page_size = convert_config_data(line);
+                page_table_c.page_size = convert_config_data(line);
             case 10:
                 cache.num_entries = convert_config_data(line);
                 break;
@@ -100,5 +101,8 @@ void parse_config(std::string filename)
 int main()
 {
     parse_config("trace.config");
+    page_table test(page_table_c.num_virtual_pages, 
+            page_table_c.num_physical_pages, page_table_c.page_size);
+
     return 0;
 }
