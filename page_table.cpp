@@ -8,10 +8,12 @@
 ///////////////////////////////////////////////////////////////
 #include "page_table.h"
 
-page_table::page_table(int _virt_page_count, int _phys_frame_count, int page_size)
+page_table::page_table(int _virt_page_count, int _phys_frame_count, int _page_size)
 {
     virtual_page_count = _virt_page_count;
     phys_frame_count = _phys_frame_count;
+    page_size = _page_size;
+
     for(int i = 0; i < virtual_page_count; i++)
     {
         pte tmp;
@@ -68,3 +70,22 @@ int page_table::lookup(int virtual_page)
         return -1;//we missed, but we have the entry now...
     }
 }
+
+int page_table::translate(int virtual_page, int offset)
+{
+    int phys_frame = lookup(virtual_page);
+    int phys_addr;
+    if(phys_frame < 0)//we missed..
+    {
+        //here we know that the virtual page is valid
+        //but we will check anyway.. (:
+        if(entries[virtual_page].valid_bit)
+            phys_frame = entries[virtual_page].phys_frame_num;
+        else
+            phys_frame = lookup(virtual_page);//if we missed the first time,
+            //we wont miss this time...
+    }//if we hit, then the phys frame is valid.. so we can calc the addr
+    phys_addr = page_size * phys_frame + offset;
+    return phys_addr;
+}
+
