@@ -59,6 +59,39 @@ int convert_config_data(std::string line)
         return line.at(0);
 }
 
+void check_config_validity(int config_value, int lower_val, int upper_val, bool check_power_of_two, std::string type)
+{
+   if(upper_val > 0)
+   {
+        if(config_value < lower_val || config_value > upper_val)
+        {
+            std::cout << "Error: " << type << " must be between " << lower_val 
+                      << " and " << upper_val << ". Received " << config_value
+                      << ". Exiting..." << std::endl;
+            exit(-1);
+        }
+   }
+   else
+   {
+        if(config_value < lower_val)
+        {
+            std::cout << "Error: " << type << " must be larger " << lower_val
+                      << ". Received " << config_value << ". Exiting..." << std::endl;
+            exit(-1);
+        }
+   }
+
+   if(check_power_of_two)
+   {
+        if((config_value & (config_value - 1)) != 0)
+        {
+            std::cout << "Error: " << type << " must be a power of two. Received "
+                      << config_value << ". Exiting..." << std::endl;
+            exit(-1);
+        }
+   }
+}
+
 void parse_config(std::string filename)
 {  
     std::string line;
@@ -73,23 +106,39 @@ void parse_config(std::string filename)
         {
             case 2:
                 TLB_c.num_entries = convert_config_data(line);
+                check_config_validity(TLB_c.num_entries, 1, 256, true, "DTLB number of entries");
+                
                 break;
             case 5:
                 page_table_c.num_virtual_pages = convert_config_data(line);
+                check_config_validity(page_table_c.num_virtual_pages, 1, 8192, true, "Page table number of virtual pages");
+               
                 break;
             case 6:
                 page_table_c.num_physical_pages = convert_config_data(line);
+                check_config_validity(page_table_c.num_physical_pages, 1, 1024, true, "Page table number of physical pages");
+                
                 break;
             case 7:
                 page_table_c.page_size = convert_config_data(line);
+                check_config_validity(page_table_c.page_size, 0, 0, true, "Page table page size");
+                
+                break;
             case 10:
-                cache_c.num_entries = convert_config_data(line);
+
+                cache.num_entries = convert_config_data(line);
+                check_config_validity(cache.num_entries, 1, 1024, true, "Cache number of entries");
+                
                 break;
             case 11:
-                cache_c.set_size = convert_config_data(line);
+                cache.set_size = convert_config_data(line);
+                check_config_validity(cache.set_size, 1, 8, true, "Cache set size");
+                
                 break;
             case 12:
-                cache_c.line_size = convert_config_data(line);
+                cache.line_size = convert_config_data(line);
+                check_config_validity(cache.line_size, 8, 0, true, "Cache line size");
+				
                 break;
                 
             // for the next three cases, 121 is 'y' in ascii
