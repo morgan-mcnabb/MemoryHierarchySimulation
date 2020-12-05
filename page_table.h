@@ -22,10 +22,13 @@ class page_table
         int valid_pte_count = 0;
         int phys_frame_index = 0;
         int phys_frame_count;
+        int page_size;
         vector<pte> entries;
 
         page_table(int _virt_page_count, int _phys_page_count, int page_size);
 
         int lookup(int virtual_page);
+
+        int translate(int virtual_page, int offset);
 };
 #endif 

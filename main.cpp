@@ -21,8 +21,5 @@ int main()
     parse_config("trace.config");
     parse_traces("trace.dat");
     track_traces();
-        
-    
-
     return 0;
 }
