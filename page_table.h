@@ -6,7 +6,7 @@
 //  Start Date: December 2, 2020
 //  Last Updated: December 3, 2020
 ///////////////////////////////////////////////////////////////
-#include "pte.cpp"
+#include "pte.h"
 #include <ctime>
 #include <bits/stdc++.h>
 
