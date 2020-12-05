@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <string>
 #include <string.h>
+#include <vector>
+#include "TLBuffer.h"
 
 struct DTLB_config
 {
@@ -29,9 +31,17 @@ struct data_cache_config
     bool TLB;
 };
 
-DTLB_config TLB;
+struct trace
+{
+    std::string access_type;
+    unsigned int page_offset;
+    unsigned int page_number;
+};
+
+DTLB_config TLB_c;
 page_table_config page_table_c;
 data_cache_config cache;
+std::vector<trace> traces;
 
 
 
@@ -113,10 +123,47 @@ void parse_traces(std::string filename)
         hexx = std::stol(virtual_address, nullptr, 16);
         page_offset = hexx & offset_mask;
         page_number = hexx & page_number_mask;
-        std::cout << access_type << " and  " << virtual_address << " VA hex = " << hexx << " page_num: " << page_number << " page_offset: " << page_offset <<   std::endl;
+
+        trace tmp;
+        tmp.page_offset = page_offset;
+        tmp.page_number = page_number;
+        tmp.access_type = access_type;
+        traces.push_back(tmp);
 
 
+        std::cout << access_type << " and  " << virtual_address << " VA hex = " 
+            << hexx << " page_num: " << page_number << " page_offset: " 
+            << page_offset <<   std::endl;
     }
 }
+
+void track_traces()
+{
+    if(traces.capacity() > 0)
+    {
+        //start
+        TLBuffer TLB(TLB_c.num_entries);
+        //create a page table here
+        for(int i = 0; i < (int)traces.capacity(); i++)
+        {
+            bool TLB_hit = TLB.lookup(traces[i].page_number);
+            if(TLB_hit)
+            {
+                //just output forehead?
+                //figure out what we are supposed to do with the Data cache here
+                std::cout << "TLB: hit." << std::endl;
+            }
+            else
+            {
+                std::cout << "TLB: miss.\t";
+                //lookup the page in the PT here..
+
+                
+            }
+        }
+    }
+}
+
+
 
 #endif
