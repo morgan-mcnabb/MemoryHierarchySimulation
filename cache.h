@@ -7,66 +7,6 @@
 
 #include <cmath>
 
-class DataCache
-{
-private:
-
-    uint64_t * cache;
-    unsigned int num_entries;
-    unsigned int set_size;
-    unsigned int line_size;
-    unsigned int address_size; //In bits
-    bool write_through_no_write_allocate;
-    int total_tag_bits;
-    int total_index_bits;
-    int total_offset_bits;
-
-    /*
-     * Get the index of a physical address for the cache
-     */
-    unsigned int getIndex(uint64_t physicalAddress) {
-        unsigned int index = physicalAddress;
-        unsigned int bitManager = 0xFFFFFFFF;
-
-        // Get index from the physical address
-        index = index >> total_offset_bits;                 // Right shift so that the index is the LSB
-        bitManager = bitManager >> (32 - total_index_bits); // Right shift so that only the index bits are left
-        index = index & bitManager;                         // Gets the index in the cache
-        return index;
-    }
-
-    /*
-     * Get the Tag of a physical address for the cache
-     */
-    unsigned int getTag(uint64_t physicalAddress) {
-        unsigned int index = physicalAddress;
-        unsigned int bitManager = 0xFFFFFFFF;
-
-        // Get Tag from the physical address
-        bitManager = 0xFFFFFFFF;
-        unsigned int tag = physicalAddress;                     // Copy physical address to get the tag
-        bitManager = bitManager >> (32 - total_tag_bits);       // Right shift to equal the number of 1 bits = tag bits
-        tag = tag >> (total_offset_bits + total_index_bits);    // Right shift so the tag is the LSB
-        tag = tag & bitManager;                                 // And the bit manager and tag to get the tag bits
-        return tag;
-    }
-
-    /*
-     * Checks the cache to see if address is there or not, adds the address if there is a miss. Returns Hit(true)
-     * or Miss(false)
-     */
-    bool checkCache(uint64_t physicalAddress, bool isWrite) {
-
-        unsigned int index;
-        unsigned int tag;
-
-        index = getIndex(physicalAddress) * num_entries;        // Gets the offset for that cache index
-
-        tag = getTag(physicalAddress);
-
-        printf("Index: %x\n", index);
-
-        printf("Tag: %x\n", tag);
 
         //Add valid and dirty bits to the physical address
         uint64_t addAddress = 0x2;
@@ -152,14 +92,36 @@ private:
                 // Cache Hit, return true
                 return true;
             }
+            else if (i == (num_entries - 1))
+            {
+                //Cache does not have the same tag as the physical address
+                //Insert physical address into the cache and remove the last entry, if not write through && with write
+                if(!write_through_no_write_allocate && !isWrite)
+                {
+                    //Move each entry to the next entry, remove the last entry as it is LRU
+                    for (int j = 0; j < (num_entries - 1); j++)
+                    {
+                        cache[index] = cache[index-1];
 
+                        index--;
+                    }
+                    cache[index] = physicalAddress;
+
+                    // Miss on cache, return false
+                    return false;
+                }
+                else
+                {
+                    //Write through, return false for hit
+                    return false;
+                }
+            }
+            else
+            {
+                //Move to the next entry
+                index++;
+            }
         }
-
-
-
-
-
-
     }
 
 
@@ -183,7 +145,7 @@ public:
 
     void read(unsigned int physicalAddress)
     {
-        checkCache(physicalAddress, false);
+        std::cout << "\n" << checkCache(physicalAddress, false);
     }
 
     void write(unsigned int physicalAddress)
