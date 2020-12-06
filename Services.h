@@ -101,6 +101,11 @@ bool parse_config(std::string filename)
 {  
     std::string line;
     std::fstream file(filename);
+    if(!file.is_open())
+    {
+        std::cout << "There was an error opening the file " << filename << ". Exiting..." << std::endl;
+        return false;
+    }
     bool valid_input = true;
     
     // to know what data we are reading
@@ -132,18 +137,18 @@ bool parse_config(std::string filename)
                 break;
             case 10:
 
-                cache.num_entries = convert_config_data(line);
-                valid_input = check_config_validity(cache.num_entries, 1, 1024, true, "Cache number of entries");
+                cache_c.num_entries = convert_config_data(line);
+                valid_input = check_config_validity(cache_c.num_entries, 1, 1024, true, "Cache number of entries");
                 
                 break;
             case 11:
-                cache.set_size = convert_config_data(line);
-                valid_input = check_config_validity(cache.set_size, 1, 8, true, "Cache set size");
+                cache_c.set_size = convert_config_data(line);
+                valid_input = check_config_validity(cache_c.set_size, 1, 8, true, "Cache set size");
                 
                 break;
             case 12:
-                cache.line_size = convert_config_data(line);
-                valid_input = check_config_validity(cache.line_size, 8, 0, true, "Cache line size");
+                cache_c.line_size = convert_config_data(line);
+                valid_input = check_config_validity(cache_c.line_size, 8, 0, true, "Cache line size");
                 
                 break;
                 

@@ -13,10 +13,12 @@ BOOST_AUTO_TEST_CASE(services_parse_config_test)
 {
     // this will print an error message from parse config, but
     // that is what we are expecting...
-    bool test = parse_config("../bad_trace.config");
-    BOOST_CHECK(!test);
+    BOOST_CHECK(!parse_config("../bad_trace.config"));
 
-    test = parse_config("../trace.config");
-    BOOST_TEST(test);
+    BOOST_TEST(parse_config("../trace.config"));
+
+    // this will print an error message from parse config, but
+    // that is what we are expecting...
+    BOOST_TEST(!parse_config("ThisFileDoesNotExist.txt"));
 }
 
