@@ -11,6 +11,7 @@
 
 BOOST_AUTO_TEST_CASE(TLB_single_insert_test)
 {
+
     TLBuffer tlb(1);
 
     tlb.insert(10,10);
@@ -124,4 +125,90 @@ BOOST_AUTO_TEST_CASE(TLB_capacity_test)
     auto last = dq.back();
 
     BOOST_TEST(last == 2);
+}
+
+BOOST_AUTO_TEST_CASE(TLB_invalidate_test)
+{
+    TLBuffer tlb(3);
+
+    tlb.insert(1,1);
+    tlb.insert(2,2);
+    tlb.insert(3,3);
+
+    tlb.invalidate(1);
+
+    BOOST_TEST(tlb.lru_entries.back() != 1);
+    BOOST_TEST(tlb.lru_entries.back() == 2);
+    BOOST_TEST(tlb.lru_entries.size() == 2);
+
+    std::deque<int> dq = tlb.lru_entries;
+    auto it = dq.begin();
+
+    BOOST_TEST(*it == 3);
+    it++;
+    BOOST_TEST(*it == 2);
+    BOOST_TEST(*it != 1);
+}
+
+BOOST_AUTO_TEST_CASE(TLB_invalidate_lookup_order_test)
+{
+    TLBuffer tlb(5);
+
+    tlb.insert(1,1);
+    tlb.insert(2,2);
+    tlb.insert(3,3);
+    tlb.insert(4,4);
+    tlb.insert(5,5);
+
+    
+    BOOST_TEST(tlb.lookup(3));
+    BOOST_TEST(tlb.lookup(5));
+    BOOST_TEST(tlb.lookup(4));
+    BOOST_TEST(tlb.lookup(5));
+    BOOST_TEST(tlb.lookup(1));
+
+    std::deque<int> dq = tlb.lru_entries;
+    auto it = dq.begin();
+
+    BOOST_TEST(*it == 1);
+    it++;
+    BOOST_TEST(*it == 5);
+    it++;
+    BOOST_TEST(*it == 4);
+    it++;
+    BOOST_TEST(*it == 3);
+    it++;
+    BOOST_TEST(*it == 2);
+
+    tlb.invalidate(3);
+
+    BOOST_TEST(tlb.lru_entries.size() == 4);
+
+    dq = tlb.lru_entries;
+    it = dq.begin();
+
+    BOOST_TEST(*it == 1);
+    it++;
+    BOOST_TEST(*it == 5);
+    it++;
+    BOOST_TEST(*it == 4);
+    it++;
+    BOOST_TEST(*it == 2);
+
+    tlb.insert(3,3);
+
+    BOOST_TEST(tlb.lru_entries.size() == 5);
+
+    dq = tlb.lru_entries;
+    it = dq.begin();
+
+    BOOST_TEST(*it == 3);
+    it++;
+    BOOST_TEST(*it == 1);
+    it++;
+    BOOST_TEST(*it == 5);
+    it++;
+    BOOST_TEST(*it == 4);
+    it++;
+    BOOST_TEST(*it == 2);
 }
