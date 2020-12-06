@@ -19,6 +19,7 @@
 int main()
 {
     parse_config("trace.config");
+    display_config_settings();
     parse_traces("trace.dat");
     track_traces();
     return 0;

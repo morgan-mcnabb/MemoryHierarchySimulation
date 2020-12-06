@@ -35,13 +35,14 @@ struct data_cache_config
 struct trace
 {
     std::string access_type;
+    unsigned int input_address;
     unsigned int page_offset;
     unsigned int page_number;
 };
 
 DTLB_config TLB_c;
 page_table_config page_table_c;
-data_cache_config cache;
+data_cache_config cache_c;
 std::vector<trace> traces;
 
 
@@ -130,6 +131,7 @@ bool parse_config(std::string filename)
                 
                 break;
             case 10:
+
                 cache.num_entries = convert_config_data(line);
                 valid_input = check_config_validity(cache.num_entries, 1, 1024, true, "Cache number of entries");
                 
@@ -147,13 +149,13 @@ bool parse_config(std::string filename)
                 
             // for the next three cases, 121 is 'y' in ascii
             case 13:
-                cache.write_through_no_write_allocate = convert_config_data(line) == 121;
+                cache_c.write_through_no_write_allocate = convert_config_data(line) == 121;
                 break;
             case 15:
-                cache.virtual_addresses = convert_config_data(line) == 121;
+                cache_c.virtual_addresses = convert_config_data(line) == 121;
                 break;
             case 16:
-                cache.TLB = convert_config_data(line) == 121;
+                cache_c.TLB = convert_config_data(line) == 121;
                 break;
         }
 
@@ -188,59 +190,130 @@ void parse_traces(std::string filename)
         tmp.page_offset = page_offset;
         tmp.page_number = page_number;
         tmp.access_type = access_type;
+        tmp.input_address = hexx;
         traces.push_back(tmp);
 
 
+        /*
         std::cout << access_type << " and  " << virtual_address << " VA hex = " 
             << hexx << " page_num: " << page_number << " page_offset: " 
             << page_offset <<   std::endl;
+            */
     }
+}
+
+void display_config_settings()
+{
+    std::cout << "Number of virtual pages is " 
+        + to_string(page_table_c.num_virtual_pages) + ".\n";
+    std::cout << "Number of physical pages is "
+       + to_string(page_table_c.num_physical_pages) + ".\n";
+    std::cout << "Each page contains " + to_string(page_table_c.page_size) 
+        + " bytes.\n";
+    std::cout << "Number of bits used for the page table index is "
+        + to_string((int)std::log2(page_table_c.num_virtual_pages)) + ".\n";
+    std::cout << "Number of bits used for the page offset is "
+        + to_string((int)std::log2(page_table_c.page_size)) + ".\n";
+
+    std::cout << endl;
+
+    std::cout << "Data TLB contains " + to_string(TLB_c.num_entries) 
+        + " entries.\n";
+
+    std::cout << endl;
+
+    std::cout << "Data cache contains " + to_string(cache_c.set_size) 
+        + " sets.\n";
+    std::cout << "Each set contains " + to_string(cache_c.num_entries) 
+        + " entries.\n";
+    std::cout << "Each line is " + to_string(cache_c.line_size) + " bytes.\n";
+    if(cache_c.write_through_no_write_allocate)
+        std::cout << "The cache uses a write through cache" << 
+            " with no write allocation.\n";
+    else
+        std::cout << "The cache uses write back cache with write" <<
+            " allocation.\n";
+    std::cout << "Number of bits used for the tag is " + to_string(420) + ".\n";//ALEX WE NEED YOU TO CALL YOUR DATA CACHE STUFF HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    std::cout << "Number of bits used for the index is " + to_string(69) + ".\n";//ALEX WE NEED YOU TO CALL YOUR DATA CACHE STUFF HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    std::cout << "Number of bits used for the offset is " + to_string(1337) + ".\n";//ALEX WE NEED YOU TO CALL YOUR DATA CACHE STUFF HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    std::cout << endl;
+
+    if(cache_c.virtual_addresses)
+        std::cout << "The addresses read in are virtual addresses.\n";
+    else
+        std::cout << "The addresses read in are physical addresses.\n";
+
+    if(cache_c.TLB)
+        std::cout << "The translation lookaside buffer is enabled.\n";
+    else
+        std::cout << "The translation lookaside buffer is disabled.\n";
+
+    std::cout << endl;
+
 }
 
 void track_traces()
 {
+    printf("%-8s %-6s %-4s %-4s %-4s %-4s %-6s %-3s %-4s\n", "Virtual", "Virt.", "Page", "TLB", "PT", "Phys", "", "DC", "DC"); 
+    printf("%-8s %-6s %-4s %-4s %-4s %-4s %-6s %-3s %-4s\n", "Address", "Page #", "Off.", "Res.", "Res.", "Pg #", "DC Tag", "Idx", "Res."); 
+    printf("%-8s %-6s %-4s %-4s %-4s %-4s %-6s %-3s %-4s\n", "--------", "------", "----", "----", "----", "----", "------", "---", "----"); 
+    //printf("%08x %6x %4x %4s %4s %4x %6x %3x %4s", "
     if(traces.size() > 0)
     {
-        //start
         TLBuffer TLB(TLB_c.num_entries);
         page_table PT(page_table_c.num_virtual_pages, 
                 page_table_c.num_physical_pages, page_table_c.page_size);
         for(int i = 0; i < (int)traces.size(); i++)
         {
             bool TLB_hit = TLB.lookup(traces[i].page_number);
+            bool PT_hit_or_miss;
+            int phys_page_num;
             if(TLB_hit)
             {
                 //just output forehead?
                 //figure out what we are supposed to do with the Data cache here
+                /*
                 std::cout << "TLB: hit. For virt page: " + 
                     to_string(traces[i].page_number) << std::endl;
+                    */
             }
             else
             {
-                std::cout << "TLB: miss.\t";
+                //std::cout << "TLB: miss.\t";
                 //lookup the page in the PT here..
                 int PT_hit = PT.lookup(traces[i].page_number);
                 if(PT_hit < 0)//if PT misses
                 {
-                    int phys_frame_num = PT.lookup(traces[i].page_number);
-                    std::cout << "Inserting phys frame: " + to_string(phys_frame_num) << "\t";
-                    TLB.insert(traces[i].page_number, phys_frame_num);
-                    std::cout << "Page Table: miss.\t";
+                    PT_hit_or_miss = false;
+                    //int phys_frame_num = PT.lookup(traces[i].page_number);
+                    phys_page_num = PT.lookup(traces[i].page_number);
+                    //std::cout << "Inserting phys frame: " + to_string(phys_frame_num) << "\t";
+                    TLB.insert(traces[i].page_number, phys_page_num);
+                    //std::cout << "Page Table: miss.\t";
                     //figure out what we are supposed to do with the Data cache 
                     //here
                     
                 }
                 else
                 {
-                    std::cout << "Inserting phys frame: " + to_string(PT_hit) << "\t";
+                    PT_hit_or_miss = true;
+                    phys_page_num = PT_hit;
+                    //std::cout << "Inserting phys frame: " + to_string(PT_hit) << "\t";
                     TLB.insert(traces[i].page_number, PT_hit);
-                    std::cout << "Page Table: hit.\t";
+                    //std::cout << "Page Table: hit.\t";
                     //figure out what the data cache is supposed to do
                 }
 
+                /*
                 std::cout << "For virtual page: " 
                     + to_string(traces[i].page_number) << endl;
+                    */
             }
+            string TLB_res = (TLB_hit) ? "hit" : "miss";
+            string PT_res = (PT_hit_or_miss) ? "hit" : "miss";
+            
+            printf("%08x %6x %4x %4s %4s %4x %6x %3x %4s\n", traces[i].input_address, traces[i].page_number, traces[i].page_offset, TLB_res.c_str(), PT_res.c_str(), phys_page_num, 0x45, 0x45, "?");
         }
     }
 }
