@@ -33,11 +33,7 @@ int page_table::lookup(int virtual_page)
 
     if(entries[virtual_page].valid_bit)
     { 
-        bool res = update_pte(entries[virtual_page]);//move to front of queue
-        if(res)
-            printf("success\n");
-        else
-            printf("Fuck\n");
+        update_pte(entries[virtual_page]);//move to front of queue
         return entries[virtual_page].phys_frame_num;
     }
     else//if the physical frame number isnt valid...
@@ -49,25 +45,17 @@ int page_table::lookup(int virtual_page)
             entries[virtual_page].valid_bit = true;
             valid_pte_count++;
             
-            if(deck.size() < (unsigned int)virtual_page_count)
-            {
+            if(deck.size() < (unsigned int)virtual_page_count)//make sure the 
+                //deck size doesnt exceed the virt page count
                 deck.push_front(entries[virtual_page]);
-                printf("free: pushing: %d\n", entries[virtual_page].phys_frame_num);
-            }
             else
             {
                 deck.pop_back();
                 deck.push_front(entries[virtual_page]);
-                printf("free: pushing: %d\n", entries[virtual_page].phys_frame_num);
             }
-            //entries[virtual_page].time_accessed = time(0);
-            //update_pte(entries[virtual_page]);//move to front of queue
         }
         else//we have to evict here
         {
-            for (auto it = deck.begin(); it != deck.end(); ++it)          
-                cout << ' ' << (*it).phys_frame_num; 
-            cout << endl;
             pte tenant = deck.back();
             deck.pop_back();
 
@@ -78,15 +66,9 @@ int page_table::lookup(int virtual_page)
                     entries[i].valid_bit = false;
             }
             entries[virtual_page].valid_bit = true;
-            entries[virtual_page].phys_frame_num = 
-                tenant.phys_frame_num;
+            entries[virtual_page].phys_frame_num = tenant.phys_frame_num;
             
-            //entries[virtual_page].time_accessed = time(0); 
-            bool res = update_pte(entries[virtual_page]);//move to front of queue
-            if(res)
-                printf("1success\n");
-            else
-                printf("1Fuck\n");
+            deck.push_front(entries[virtual_page]);
         }
         return -1;//we missed, but we have the entry now...
     }
@@ -95,7 +77,7 @@ int page_table::lookup(int virtual_page)
 bool page_table::update_pte(pte entry) 
 {
     deque<pte>::iterator deck_index = deck.begin();
-    while(*deck_index != entry)//until we find the pte...
+    while((*deck_index).phys_frame_num != entry.phys_frame_num)//until we find the pte...
     {
         deck_index++;
     }
@@ -104,7 +86,6 @@ bool page_table::update_pte(pte entry)
     else
     {
         deck.erase(deck_index);//remove the pte
-        printf("pushing: %d\n", entry.phys_frame_num);
         deck.push_front(entry);
         return true;
     }
