@@ -22,6 +22,31 @@ private:
     int total_offset_bits;
 
     /*
+     * changes the valid bit
+     */
+    uint64_t setValidBit(uint64_t physicalAddress, bool isValid) {
+        uint64_t bitManager;
+        if (isValid)
+        {
+            bitManager = 0x0;  //Valid bit set, using bitwise not
+        }
+        else
+        {
+            bitManager = 0x2;  //Valid bit cleared using bitwise not
+        }
+
+        //Shift bits to the valid & dirty bit position
+        bitManager = bitManager << (address_size);
+        //NOT Operand so that all bits are 1 to AND the bit manager and physical address
+        bitManager = ~bitManager;
+
+        physicalAddress = bitManager & physicalAddress;
+
+        // Return the new address with the set or cleared valid bit
+        return physicalAddress;
+    }
+
+    /*
      * Checks the cache to see if address is there or not, adds the address if there is a miss.
      * Returns Hit(true) or Miss(false)
      */
@@ -47,7 +72,7 @@ private:
             unsigned int cacheTag = getTag(cacheEntry);
 
             //Determine if anything is in the given cache position
-            if (cacheEntry == NULL)
+            if (cacheEntry == 0)
             {
                 // No data in cache position, determine if cache needs to be updated
                 if(!write_through_no_write_allocate && !isWrite)
@@ -124,6 +149,9 @@ private:
                 //Insert physical address into the cache and remove the last entry, if not write through && with write
                 if(!write_through_no_write_allocate && !isWrite)
                 {
+                    //set address about to be ejected valid bit to 0
+                    setValidBit(cache[index], false);
+
                     //Move each entry to the next entry, remove the last entry as it is LRU
                     for (int j = 0; j < (set_size - 1); j++)
                     {
