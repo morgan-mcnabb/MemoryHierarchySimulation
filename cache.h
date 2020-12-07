@@ -22,33 +22,28 @@ private:
     int total_offset_bits;
 
     /*
-     * Get the index of a physical address for the cache
+     * changes the valid bit
      */
-    unsigned int getIndex(uint64_t physicalAddress) {
-        unsigned int index = physicalAddress;
-        unsigned int bitManager = 0xFFFFFFFF;
+    uint64_t setValidBit(uint64_t physicalAddress, bool isValid) {
+        uint64_t bitManager;
+        if (isValid)
+        {
+            bitManager = 0x0;  //Valid bit set, using bitwise not
+        }
+        else
+        {
+            bitManager = 0x2;  //Valid bit cleared using bitwise not
+        }
 
-        // Get index from the physical address
-        index = index >> total_offset_bits;                 // Right shift so that the index is the LSB
-        bitManager = bitManager >> (32 - total_index_bits); // Right shift so that only the index bits are left
-        index = index & bitManager;                         // Gets the index in the cache
-        return index;
-    }
+        //Shift bits to the valid & dirty bit position
+        bitManager = bitManager << (address_size);
+        //NOT Operand so that all bits are 1 to AND the bit manager and physical address
+        bitManager = ~bitManager;
 
-    /*
-     * Get the Tag of a physical address for the cache
-     */
-    unsigned int getTag(uint64_t physicalAddress) {
-        unsigned int index = physicalAddress;
-        unsigned int bitManager = 0xFFFFFFFF;
+        physicalAddress = bitManager & physicalAddress;
 
-        // Get Tag from the physical address
-        bitManager = 0xFFFFFFFF;
-        unsigned int tag = physicalAddress;                     // Copy physical address to get the tag
-        bitManager = bitManager >> (32 - total_tag_bits);       // Right shift to equal the number of 1 bits = tag bits
-        tag = tag >> (total_offset_bits + total_index_bits);    // Right shift so the tag is the LSB
-        tag = tag & bitManager;                                 // And the bit manager and tag to get the tag bits
-        return tag;
+        // Return the new address with the set or cleared valid bit
+        return physicalAddress;
     }
 
     /*
@@ -60,7 +55,7 @@ private:
         unsigned int index;
         unsigned int tag;
 
-        index = getIndex(physicalAddress) * num_entries;        // Gets the offset for that cache index
+        index = getIndex(physicalAddress) * set_size;        // Gets the offset for that cache index
 
         tag = getTag(physicalAddress);
 
@@ -70,14 +65,14 @@ private:
         physicalAddress = physicalAddress | addAddress;
 
         // Loop through number of entries for that given index
-        for (int i = 0; i < num_entries; i++)
+        for (int i = 0; i < set_size; i++)
         {
             //Get cache entry from the cache
             uint64_t cacheEntry = cache[index];
             unsigned int cacheTag = getTag(cacheEntry);
 
             //Determine if anything is in the given cache position
-            if (cacheEntry == NULL)
+            if (cacheEntry == 0)
             {
                 // No data in cache position, determine if cache needs to be updated
                 if(!write_through_no_write_allocate && !isWrite)
@@ -98,10 +93,10 @@ private:
                         index -= i;
 
                         // Not first entry, shift all entries in set 1 entry over
-                        for (int j = 0; j < num_entries; j++)
+                        for (int j = 0; j < set_size; j++)
                         {
                             // set the index to the second to last entry
-                            index += num_entries - 2;
+                            index += set_size - 2;
 
                             // Copy entry address and move it to the next entry
                             cache[index+1] = cache[index];
@@ -148,14 +143,17 @@ private:
                 // Cache Hit, return true
                 return true;
             }
-            else if (i == (num_entries - 1))
+            else if (i == (set_size - 1))
             {
                 //Cache does not have the same tag as the physical address
                 //Insert physical address into the cache and remove the last entry, if not write through && with write
                 if(!write_through_no_write_allocate && !isWrite)
                 {
+                    //set address about to be ejected valid bit to 0
+                    setValidBit(cache[index], false);
+
                     //Move each entry to the next entry, remove the last entry as it is LRU
-                    for (int j = 0; j < (num_entries - 1); j++)
+                    for (int j = 0; j < (set_size - 1); j++)
                     {
                         cache[index] = cache[index-1];
 
@@ -191,7 +189,7 @@ public:
         write_through_no_write_allocate = writeThroughNoWriteAllocate;
         address_size = log2(pageSize) + log2(numberOfPhysicalPages);
 
-        total_index_bits = log2(set_size);
+        total_index_bits = log2(num_entries);
         total_offset_bits = log2(line_size);
         total_tag_bits = address_size - total_offset_bits - total_index_bits;
 
@@ -199,9 +197,39 @@ public:
 
     }
 
+
     ~DataCache()
     {
         free(cache);
+    }
+
+
+    /*
+    * Get the index of a physical address for the cache
+    */
+    unsigned int getIndex(uint64_t physicalAddress) {
+        unsigned int index = physicalAddress;
+        unsigned int bitManager = 0xFFFFFFFF;
+
+        // Get index from the physical address
+        index = index >> total_offset_bits;                 // Right shift so that the index is the LSB
+        bitManager = bitManager >> (32 - total_index_bits); // Right shift so that only the index bits are left
+        index = index & bitManager;                         // Gets the index in the cache
+        return index;
+    }
+
+    /*
+     * Get the Tag of a physical address for the cache
+     */
+    unsigned int getTag(uint64_t physicalAddress) {
+        unsigned int bitManager = 0xFFFFFFFF;
+
+        // Get Tag from the physical address
+        unsigned int tag = physicalAddress;                     // Copy physical address to get the tag
+        bitManager = bitManager >> (32 - total_tag_bits);       // Right shift to equal the number of 1 bits = tag bits
+        tag = tag >> (total_offset_bits + total_index_bits);    // Right shift so the tag is the LSB
+        tag = tag & bitManager;                                 // And the bit manager and tag to get the tag bits
+        return tag;
     }
 
     bool read(unsigned int physicalAddress)
@@ -212,21 +240,6 @@ public:
     bool write(unsigned int physicalAddress)
     {
         return checkCache(physicalAddress, true);
-    }
-
-    int getTotalIndexBits()
-    {
-        return total_index_bits;
-    }
-
-    int getTotalTagBits()
-    {
-        return total_tag_bits;
-    }
-
-    int getTotalOffsetBits()
-    {
-        return total_offset_bits;
     }
 };
 #endif //MEMORYHIERARCHYSIMULATION_CACHE_H
