@@ -13,6 +13,7 @@ page_table::page_table(int _virt_page_count, int _phys_frame_count, int _page_si
     virtual_page_count = _virt_page_count;
     phys_frame_count = _phys_frame_count;
     page_size = _page_size;
+    deck.clear();
 
     for(int i = 0; i < virtual_page_count; i++)
     {
@@ -20,7 +21,6 @@ page_table::page_table(int _virt_page_count, int _phys_frame_count, int _page_si
         tmp.phys_frame_num = -1;
         tmp.valid_bit = false;
         tmp.dirty_bit = false;
-        tmp.time_accessed = time(0);
         entries.push_back(tmp);
     }
 }
@@ -33,7 +33,11 @@ int page_table::lookup(int virtual_page)
 
     if(entries[virtual_page].valid_bit)
     { 
-        entries[virtual_page].time_accessed = time(0);
+        bool res = update_pte(entries[virtual_page]);//move to front of queue
+        if(res)
+            printf("success\n");
+        else
+            printf("Fuck\n");
         return entries[virtual_page].phys_frame_num;
     }
     else//if the physical frame number isnt valid...
@@ -44,30 +48,65 @@ int page_table::lookup(int virtual_page)
             phys_frame_index++;
             entries[virtual_page].valid_bit = true;
             valid_pte_count++;
-            entries[virtual_page].time_accessed = time(0);
+            
+            if(deck.size() < (unsigned int)virtual_page_count)
+            {
+                deck.push_front(entries[virtual_page]);
+                printf("free: pushing: %d\n", entries[virtual_page].phys_frame_num);
+            }
+            else
+            {
+                deck.pop_back();
+                deck.push_front(entries[virtual_page]);
+                printf("free: pushing: %d\n", entries[virtual_page].phys_frame_num);
+            }
+            //entries[virtual_page].time_accessed = time(0);
+            //update_pte(entries[virtual_page]);//move to front of queue
         }
         else//we have to evict here
         {
-            int min = INT_MAX;
-            int eviction_index = -1;
-            for(int i = 0; i < virtual_page_count; i++)//walk the table
-            {
-                if(entries[i].valid_bit && 
-                        entries[i].time_accessed < min)
-                {
-                    min = entries[i].time_accessed;
-                    eviction_index = i;
-                }
-            }
+            for (auto it = deck.begin(); it != deck.end(); ++it)          
+                cout << ' ' << (*it).phys_frame_num; 
+            cout << endl;
+            pte tenant = deck.back();
+            deck.pop_back();
 
-            entries[eviction_index].valid_bit = false;//evict the least recently used pte
+            //tenant.valid_bit = false;//evict the least recently used pte
+            for(int i = 0; i < virtual_page_count; i++)
+            {
+                if(entries[i] == tenant)//find the pte to evict
+                    entries[i].valid_bit = false;
+            }
             entries[virtual_page].valid_bit = true;
             entries[virtual_page].phys_frame_num = 
-                entries[eviction_index].phys_frame_num;//I could be assigning the 
-            //wrong frame number here???
-            entries[virtual_page].time_accessed = time(0); 
+                tenant.phys_frame_num;
+            
+            //entries[virtual_page].time_accessed = time(0); 
+            bool res = update_pte(entries[virtual_page]);//move to front of queue
+            if(res)
+                printf("1success\n");
+            else
+                printf("1Fuck\n");
         }
         return -1;//we missed, but we have the entry now...
+    }
+}
+
+bool page_table::update_pte(pte entry) 
+{
+    deque<pte>::iterator deck_index = deck.begin();
+    while(*deck_index != entry)//until we find the pte...
+    {
+        deck_index++;
+    }
+    if(deck_index == deck.end())
+        return false;
+    else
+    {
+        deck.erase(deck_index);//remove the pte
+        printf("pushing: %d\n", entry.phys_frame_num);
+        deck.push_front(entry);
+        return true;
     }
 }
 
