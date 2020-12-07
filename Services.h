@@ -374,10 +374,25 @@ void track_traces()
             unsigned int DCTag = cache.getTag(physicalAddress);
             unsigned int DCIndex = cache.getIndex(physicalAddress);
             string DT_res;
+            bool access_type_success;
+
             if (traces[i].access_type.compare("R") == 0)
-                DT_res = (cache.read(physicalAddress)) ? "hit" : "miss";
+            {
+                access_type_success = cache.read(physicalAddress);
+            }
             else
-                DT_res = (cache.write(physicalAddress)) ? "hit" : "miss";
+                access_type_success = cache.write(physicalAddress);
+               
+            if(access_type_success)
+            {
+                DT_res = "hit";
+                DC_hit_count++;
+            }
+            else
+            {
+                DT_res = "miss";
+                DC_miss_count++;
+            }
             
             printf("%08x %6x %4x %-4s %-4s %4x %6x %3x %-4s\n", 
                     traces[i].input_address, traces[i].page_number, 
