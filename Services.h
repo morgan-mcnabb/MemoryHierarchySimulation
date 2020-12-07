@@ -318,7 +318,10 @@ void track_traces()
             string TLB_res = (TLB_hit) ? "hit" : "miss";
             string PT_res = (PT_hit_or_miss) ? "hit" : "miss";
             
-            printf("%08x %6x %4x %4s %4s %4x %6x %3x %4s\n", traces[i].input_address, traces[i].page_number, traces[i].page_offset, TLB_res.c_str(), PT_res.c_str(), phys_page_num, 0x45, 0x45, "?");
+            printf("%08x %6x %4x %-4s %-4s %4x %6x %3x %-4s\n", 
+                    traces[i].input_address, traces[i].page_number, 
+                    traces[i].page_offset, TLB_res.c_str(), PT_res.c_str(), 
+                    phys_page_num, 0x45, 0x45, "?");
             printf("\n");
         }
     }
@@ -326,7 +329,27 @@ void track_traces()
 
 void print_statistics()
 {
-    
+    printf("Simulation Statistics\n");
+    printf("---------------------\n");
+    printf("%-25s %-3d\n", "Data TLB hits:", 100);
+    printf("%-25s %-3d\n", "Data TLB misses:", 100);
+    printf("%-25s %-3d\n", "Data TLB hit ratio:", 100);
+    cout << endl;
+    printf("%-25s %-3d\n", "Page table hits:", 100);
+    printf("%-25s %-3d\n", "Page table faults:", 100);
+    printf("%-25s %-3d\n", "Page table hit ratio:", 100);
+    cout << endl;
+    printf("%-25s %-3d\n", "Data cache hits:", 100);
+    printf("%-25s %-3d\n", "Data cache misses:", 100);
+    printf("%-25s %-3d\n", "Data cache hit ratio:", 100);
+    cout << endl;
+    printf("%-25s %-3d\n", "Total reads:", 100);
+    printf("%-25s %-3d\n", "Total writes:", 100);
+    printf("%-25s %-3d\n", "Ratio of reads:", 100);
+    cout << endl;
+    printf("%-25s %-3d\n", "Main memory references:", 100);
+    printf("%-25s %-3d\n", "Page table references:", 100);
+    printf("%-25s %-3d\n", "Disk references:", 100);
 }
 
 
