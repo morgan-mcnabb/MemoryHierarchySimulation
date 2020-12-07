@@ -24,18 +24,8 @@ bool TLBuffer::lookup(int virtual_page_number)
     if(tlb.find(virtual_page_number) == tlb.end())
         return false;
 
-    // for indexing through the LRU entries inside the TLB
-    std::deque<int>::iterator lru_index = lru_entries.begin();
-
-    // do this until we find the VPN in the LRU cache
-    while(*lru_index != virtual_page_number)
-    {
-        lru_index++;
-    }
-
-    // remove the VPN at its location in the TLB cache
-    lru_entries.erase(lru_index);
-
+    
+    remove_lru_entry(virtual_page_number);
     // push the VPN to the front of the TLB cache
     lru_entries.push_front(virtual_page_number);
 
@@ -58,18 +48,7 @@ void TLBuffer::insert(int virtual_page_number, int physical_frame_number)
     }
     else
     {
-        // for indexing through the LRU entries inside the TLB
-        std::deque<int>::iterator lru_index = lru_entries.begin();
-        //
-        // do this until we find the VPN in the LRU cache
-        while(*lru_index != virtual_page_number)
-        {
-            lru_index++;
-        }
-
-        // remove the VPN from its current location in both
-        // the TLB cache and the TLB
-        lru_entries.erase(lru_index);
+        remove_lru_entry(virtual_page_number);
         tlb.erase(virtual_page_number);
     }
 
@@ -80,3 +59,26 @@ void TLBuffer::insert(int virtual_page_number, int physical_frame_number)
     tlb[virtual_page_number] = physical_frame_number;
 }
 
+void TLBuffer::invalidate(int virtual_page_number)
+{
+    if(tlb.find(virtual_page_number) == tlb.end())
+        return;
+    
+    remove_lru_entry(virtual_page_number);
+    tlb.erase(virtual_page_number);
+}
+
+void TLBuffer::remove_lru_entry(int virtual_page_number)
+{
+    // for indexing through the LRU entries inside the TLB
+    std::deque<int>::iterator lru_index = lru_entries.begin();
+
+    // do this until we find the VPN in the LRU cache
+    while(*lru_index != virtual_page_number)
+    {
+        lru_index++;
+    }
+
+    // remove the VPN at its location in the TLB cache
+    lru_entries.erase(lru_index);
+}

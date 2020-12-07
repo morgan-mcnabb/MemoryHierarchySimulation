@@ -54,3 +54,12 @@ BOOST_AUTO_TEST_CASE(page_table_lookup)
     //to phys frame numbers
 }
 
+BOOST_AUTO_TEST_CASE(page_table_translate)
+{
+    page_table pt(8,2,128);
+    int phys_addr = pt.translate(0, 0x45);
+    BOOST_CHECK(phys_addr == 0x45);
+    phys_addr = pt.translate(1, 0x45);
+    BOOST_CHECK(phys_addr == 0xc5);
+}
+
