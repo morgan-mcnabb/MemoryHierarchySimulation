@@ -44,6 +44,17 @@ DTLB_config TLB_c;
 page_table_config page_table_c;
 data_cache_config cache_c;
 std::vector<trace> traces;
+int TLB_hit_count = 0;
+int TLB_miss_count = 0;
+int PT_hit_count = 0;
+int PT_miss_count = 0;
+int DC_hit_count = 0;
+int DC_miss_count = 0;
+int read_count = 0;
+int write_count = 0;
+int main_mem_ref_count = 0;
+int PT_ref_count = 0;
+int disk_ref_count = 0;
 
 
 int convert_config_data(std::string line)
@@ -198,6 +209,11 @@ void parse_traces(std::string filename)
         tmp.input_address = hexx;
         traces.push_back(tmp);
 
+        if(tolower(tmp.access_type.c_str()[0]) == 'r')
+            read_count++;
+        else
+            write_count++;
+
 
         /*
         std::cout << access_type << " and  " << virtual_address << " VA hex = " 
@@ -276,6 +292,7 @@ void track_traces()
             int phys_page_num;
             if(TLB_hit)
             {
+                TLB_hit_count++;
                 //just output forehead?
                 //figure out what we are supposed to do with the Data cache here
                 /*
@@ -285,11 +302,13 @@ void track_traces()
             }
             else
             {
+                TLB_miss_count++;
                 //std::cout << "TLB: miss.\t";
                 //lookup the page in the PT here..
                 int PT_hit = PT.lookup(traces[i].page_number);
                 if(PT_hit < 0)//if PT misses
                 {
+                    PT_miss_count++;
                     PT_hit_or_miss = false;
                     //int phys_frame_num = PT.lookup(traces[i].page_number);
                     phys_page_num = PT.lookup(traces[i].page_number);
@@ -302,6 +321,7 @@ void track_traces()
                 }
                 else
                 {
+                    PT_hit_count++;
                     PT_hit_or_miss = true;
                     phys_page_num = PT_hit;
                     //std::cout << "Inserting phys frame: " + to_string(PT_hit) << "\t";
@@ -331,25 +351,30 @@ void print_statistics()
 {
     printf("Simulation Statistics\n");
     printf("---------------------\n");
-    printf("%-25s %-3d\n", "Data TLB hits:", 100);
-    printf("%-25s %-3d\n", "Data TLB misses:", 100);
-    printf("%-25s %-3d\n", "Data TLB hit ratio:", 100);
+    printf("%-25s %-3d\n", "Data TLB hits:", TLB_hit_count);
+    printf("%-25s %-3d\n", "Data TLB misses:", TLB_miss_count);
+    printf("%-25s %-.6f\n", "Data TLB hit ratio:", (double)TLB_hit_count/ 
+            (TLB_hit_count+TLB_miss_count));
     cout << endl;
-    printf("%-25s %-3d\n", "Page table hits:", 100);
-    printf("%-25s %-3d\n", "Page table faults:", 100);
-    printf("%-25s %-3d\n", "Page table hit ratio:", 100);
+    printf("%-25s %-3d\n", "Page table hits:", PT_hit_count);
+    printf("%-25s %-3d\n", "Page table faults:", PT_miss_count);
+    printf("%-25s %-3.6f\n", "Page table hit ratio:", (double)PT_hit_count/
+            (PT_hit_count+PT_miss_count));
     cout << endl;
-    printf("%-25s %-3d\n", "Data cache hits:", 100);
-    printf("%-25s %-3d\n", "Data cache misses:", 100);
-    printf("%-25s %-3d\n", "Data cache hit ratio:", 100);
+    printf("%-25s %-3d\n", "Data cache hits:", DC_hit_count);
+    printf("%-25s %-3d\n", "Data cache misses:", DC_miss_count);
+    printf("%-25s %-.6f\n", "Data cache hit ratio:", (double)DC_hit_count
+            /(DC_hit_count+DC_miss_count));
     cout << endl;
-    printf("%-25s %-3d\n", "Total reads:", 100);
-    printf("%-25s %-3d\n", "Total writes:", 100);
-    printf("%-25s %-3d\n", "Ratio of reads:", 100);
+    printf("%-25s %-3d\n", "Total reads:", read_count);
+    printf("%-25s %-3d\n", "Total writes:", write_count);
+    printf("%-25s %-.6f\n", "Ratio of reads:", (double)read_count/
+            (read_count+write_count));
     cout << endl;
-    printf("%-25s %-3d\n", "Main memory references:", 100);
-    printf("%-25s %-3d\n", "Page table references:", 100);
-    printf("%-25s %-3d\n", "Disk references:", 100);
+    printf("%-25s %-3d\n", "Main memory references:", DC_miss_count);
+    printf("%-25s %-3d\n", "Page table references:", PT_hit_count+
+            PT_miss_count);
+    printf("%-25s %-3d\n", "Disk references:", PT_miss_count);
 }
 
 
