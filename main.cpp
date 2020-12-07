@@ -22,5 +22,6 @@ int main()
     display_config_settings();
     parse_traces("trace.dat");
     track_traces();
+    print_statistics();
     return 0;
 }
