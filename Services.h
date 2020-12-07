@@ -9,6 +9,7 @@
 #include <vector>
 #include "TLBuffer.h"
 #include "page_table.h"
+#include "cache.h"
 
 struct DTLB_config
 {
@@ -44,6 +45,35 @@ DTLB_config TLB_c;
 page_table_config page_table_c;
 data_cache_config cache_c;
 std::vector<trace> traces;
+
+int getTotalIndexBits_cache()
+{
+    int numberOfIndexBits = log2(cache_c.num_entries);
+    if (numberOfIndexBits == 0)
+        return 1;
+    else
+        return numberOfIndexBits;
+}
+
+int getTotalOffsetBits_cache()
+{
+    int numberOfOffsetBits = log2(cache_c.line_size);
+    if(numberOfOffsetBits == 0)
+        return 1;
+    else
+        return numberOfOffsetBits;
+}
+
+int getTotalOfTagBits_cache()
+{
+    int numberOfPhysicalPageBits = log2(page_table_c.num_physical_pages);
+    int numberOfPageSizeBits = log2(page_table_c.page_size);
+    if (numberOfPageSizeBits == 0)
+        numberOfPageSizeBits = 1;
+    if (numberOfPhysicalPageBits == 0)
+        numberOfPhysicalPageBits = 1;
+    return (numberOfPhysicalPageBits + numberOfPageSizeBits - getTotalOffsetBits_cache() - getTotalIndexBits_cache());
+}
 
 
 int convert_config_data(std::string line)
@@ -238,9 +268,9 @@ void display_config_settings()
     else
         std::cout << "The cache uses write back cache with write" <<
             " allocation.\n";
-    std::cout << "Number of bits used for the tag is " + to_string(420) + ".\n";//ALEX WE NEED YOU TO CALL YOUR DATA CACHE STUFF HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    std::cout << "Number of bits used for the index is " + to_string(69) + ".\n";//ALEX WE NEED YOU TO CALL YOUR DATA CACHE STUFF HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    std::cout << "Number of bits used for the offset is " + to_string(1337) + ".\n";//ALEX WE NEED YOU TO CALL YOUR DATA CACHE STUFF HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    std::cout << "Number of bits used for the tag is " + to_string(getTotalOfTagBits_cache()) + ".\n";
+    std::cout << "Number of bits used for the index is " + to_string(getTotalIndexBits_cache()) + ".\n";
+    std::cout << "Number of bits used for the offset is " + to_string(getTotalOffsetBits_cache()) + ".\n";
 
     std::cout << endl;
 
@@ -269,6 +299,8 @@ void track_traces()
         TLBuffer TLB(TLB_c.num_entries);
         page_table PT(page_table_c.num_virtual_pages, 
                 page_table_c.num_physical_pages, page_table_c.page_size);
+        DataCache cache(cache_c.num_entries, cache_c.set_size, cache_c.line_size, cache_c.write_through_no_write_allocate,
+                        page_table_c.page_size, page_table_c.num_physical_pages);
         for(int i = 0; i < (int)traces.size(); i++)
         {
             bool TLB_hit = TLB.lookup(traces[i].page_number);
@@ -317,8 +349,18 @@ void track_traces()
             }
             string TLB_res = (TLB_hit) ? "hit" : "miss";
             string PT_res = (PT_hit_or_miss) ? "hit" : "miss";
+
+            unsigned int physicalAddress = PT.translate(traces[i].page_number, traces[i].page_offset);
+            unsigned int DCTag = cache.getTag(physicalAddress);
+            unsigned int DCIndex = cache.getIndex(physicalAddress);
+            string DT_res;
+            if (traces[i].access_type.compare("R") == 0)
+                DT_res = (cache.read(physicalAddress)) ? "hit" : "miss";
+            else
+                DT_res = (cache.write(physicalAddress)) ? "hit" : "miss";
             
-            printf("%08x %6x %4x %4s %4s %4x %6x %3x %4s\n", traces[i].input_address, traces[i].page_number, traces[i].page_offset, TLB_res.c_str(), PT_res.c_str(), phys_page_num, 0x45, 0x45, "?");
+            printf("%08x %6x %4x %4s %4s %4x %6x %3x %4s\n", traces[i].input_address, traces[i].page_number,
+                   traces[i].page_offset, TLB_res.c_str(), PT_res.c_str(), phys_page_num, DCTag, DCIndex, DT_res.c_str());
         }
     }
 }
