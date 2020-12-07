@@ -17,6 +17,9 @@ using namespace std;
 
 class page_table
 {
+    private:
+        deque<pte> deck;
+        bool update_pte(pte entry);
     public:
         int virtual_page_count;
         int valid_pte_count = 0;
