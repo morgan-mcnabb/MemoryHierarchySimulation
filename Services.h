@@ -240,21 +240,23 @@ void parse_traces(std::string filename)
     std::string line;
     const std::string delimiter = ":";
     std::fstream file(filename);
-    long hexx;
-    int page_offset;
-    int page_number;
-    int offset_mask = 0xffffffff >> (32 - (int)std::log2(page_table_c.page_size));
-    int page_number_mask =  0xffffffff << (int)std::log2(page_table_c.page_size);
-
+    unsigned int hexx;
+    unsigned int page_offset;
+    unsigned int page_number;
+    
     while(getline(file, line))
     {
         std::string access_type(line.begin(), std::find(line.begin(), line.end(), ':'));
         std::string virtual_address(std::find(line.begin(), line.end(), ':') + 1, line.end());
+        int logical_address_size = virtual_address.size();
         hexx = std::stol(virtual_address, nullptr, 16);
-        page_offset = hexx & offset_mask;
-        page_number = hexx & page_number_mask;
-        page_number = page_number >> (int)std::log2(page_table_c.page_size);
 
+        hexx = hexx << 32 - (int)(std::log2(page_table_c.page_size) + std::log2(page_table_c.num_virtual_pages));
+        hexx = hexx >> 32 - (int)(std::log2(page_table_c.page_size) + std::log2(page_table_c.num_virtual_pages));
+
+        page_number = hexx / page_table_c.page_size;
+        page_offset = hexx % page_table_c.page_size;
+ 
         trace tmp;
         tmp.page_offset = page_offset;
         tmp.page_number = page_number;
