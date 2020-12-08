@@ -20,6 +20,7 @@ private:
     int total_tag_bits;
     int total_index_bits;
     int total_offset_bits;
+    int total_mem_reference;
 
     /*
      * changes the valid bit
@@ -28,19 +29,44 @@ private:
         uint64_t bitManager;
         if (isValid)
         {
-            bitManager = 0x0;  //Valid bit set, using bitwise not
+            bitManager = 0x2;  //Valid bit set, using bitwise or
+            //Shift bits to the valid & dirty bit position
+            bitManager = bitManager << (address_size);
+            physicalAddress = bitManager | physicalAddress;
         }
         else
         {
             bitManager = 0x2;  //Valid bit cleared using bitwise not
+            //Shift bits to the valid & dirty bit position
+            bitManager = bitManager << (address_size);
+            //NOT Operand so that all bits are 1 to AND the bit manager and physical address
+            bitManager = ~bitManager;
+            physicalAddress = bitManager & physicalAddress;
         }
 
-        //Shift bits to the valid & dirty bit position
-        bitManager = bitManager << (address_size);
-        //NOT Operand so that all bits are 1 to AND the bit manager and physical address
-        bitManager = ~bitManager;
+        // Return the new address with the set or cleared valid bit
+        return physicalAddress;
+    }
 
-        physicalAddress = bitManager & physicalAddress;
+    uint64_t setDirtyBit(uint64_t physicalAddress, bool isDirty)
+    {
+        uint64_t bitManager;
+        if (isDirty)
+        {
+            bitManager = 0x1;  //Dirty bit set, using bitwise not
+            //Shift bits to the valid & dirty bit position
+            bitManager = bitManager << (address_size);
+            physicalAddress = bitManager | physicalAddress;
+        }
+        else
+        {
+            bitManager = 0x1;  //Dirty bit cleared using bitwise not
+            //Shift bits to the valid & dirty bit position
+            bitManager = bitManager << (address_size);
+            //NOT Operand so that all bits are 1 to AND the bit manager and physical address
+            bitManager = ~bitManager;
+            physicalAddress = bitManager & physicalAddress;
+        }
 
         // Return the new address with the set or cleared valid bit
         return physicalAddress;
@@ -48,6 +74,13 @@ private:
 
     unsigned int getValidBit(uint64_t physicalAddress) {
         physicalAddress = physicalAddress >> (address_size + 1);
+        return physicalAddress;
+    }
+
+    unsigned int getDirtyBit(uint64_t physicalAddress)
+    {
+        physicalAddress = physicalAddress >> address_size;
+        physicalAddress = physicalAddress & 0x1;
         return physicalAddress;
     }
 
@@ -65,9 +98,8 @@ private:
         tag = getTag(physicalAddress);
 
         //Add valid and dirty bits to the physical address
-        uint64_t addAddress = 0x2;
-        addAddress = addAddress << (address_size);
-        physicalAddress = physicalAddress | addAddress;
+        physicalAddress = setValidBit(physicalAddress, true);
+        physicalAddress = setDirtyBit(physicalAddress, false);
 
         // Loop through number of entries for that given index
         for (int i = 0; i < set_size; i++)
@@ -76,127 +108,233 @@ private:
             uint64_t cacheEntry = cache[index];
             unsigned int cacheTag = getTag(cacheEntry);
             unsigned int validBit = getValidBit(cacheEntry);
+            unsigned int dirtyBit = getDirtyBit(cacheEntry);
 
             //Determine if anything is in the given cache position
             if (cacheEntry == 0)
             {
-                // No data in cache position, determine if cache needs to be updated
-                if(!write_through_no_write_allocate && !isWrite)
+                //No entry in cache, Cache Miss
+                if (write_through_no_write_allocate)
                 {
-                    // Data can be written to the cache
-                    // Determine if this is the first entry
-                    if (i == 0)
+                    if(isWrite)
                     {
-                        // First Entry, write straight to the cache
-                        cache[index] = physicalAddress;
-                        // Cache Missed, return false
-                        return false;
+                        //Write on write through policy, does not save in cache
+                        //References to memory
+                        total_mem_reference++;
                     }
-                    else if(i > 0)
+                    else
                     {
-
-                        // set the index back to the first entry
-                        index -= i;
-
-                        // Not first entry, shift all entries in set 1 entry over
-                        for (int j = 0; j < set_size; j++)
+                        //Read on write through policy, save in cache
+                        //References to memory
+                        total_mem_reference++;
+                        if (i == 0)
                         {
-                            // set the index to the second to last entry
-                            index += set_size - 2;
-
-                            // Copy entry address and move it to the next entry
-                            cache[index+1] = cache[index];
-
-                            // Move down to the previous entry
-                            index--;
+                            //Set memory to the cache
+                            cache[index] = physicalAddress;
                         }
-
-                        // set index back to the first entry
-                        index++;
-
-                        // set the physical address to the first entry of the set
-                        cache[index] = physicalAddress;
-
-                        // Cache Missed, return false
-                        return false;
+                        else
+                        {
+                            //Set memory to cache, move other entries one spot over
+                            for (int j = 0; j < i; j++)
+                            {
+                                cache[index-j] = cache[index - (1+j)];
+                            }
+                            index -= i;
+                            cache[index] = physicalAddress;
+                        }
                     }
                 }
                 else
                 {
-                    // No entry in cache, return miss
-                    return false;
+                    //Read or Write on write-back policy with allocation, save in cache
+                    //References to memory and cache is not dirty
+                    total_mem_reference++;
+                    if (i == 0)
+                    {
+                        //Set memory to the cache
+                        cache[index] = physicalAddress;
+                    }
+                    else
+                    {
+                        //Set memory to cache, move other entries one spot over
+                        for (int j = 0; j < i; j++)
+                        {
+                            cache[index-j] = cache[index - (1+j)];
+                        }
+                        index -= i;
+                        cache[index] = physicalAddress;
+                    }
                 }
+
+                //Cache Missed, return False
+                return false;
             }
             else if(cacheTag == tag && validBit == 1)
             {
-                //Cache has the same tag as the physical address
-                //Get copy of current entry
-                uint64_t copyEntry = cache[index];
-
-                //Move the address to the first entry
-                for (int j = 0; j < i; j++)
+                // Cache Hit
+                if (write_through_no_write_allocate)
                 {
-                    //Move the previous entry to the next entry
-                    cache[index] = cache[index-1];
-
-                    //Set current index to the previous entry
-                    index--;
+                    //Write through no allocate policy
+                    if (isWrite)
+                    {
+                        // Data is being written to the cache and memory
+                        total_mem_reference++;
+                    }
+                    else
+                    {
+                        // Data is being read from the cache
+                    }
+                }
+                else
+                {
+                    //Write-back with write allocation
+                    if(isWrite)
+                    {
+                        //Write data to the cache and set cache to dirty
+                        cache[index] = setDirtyBit(cache[index], true);
+                    }
+                    else
+                    {
+                        // Data is being read from the cache
+                    }
                 }
 
-                // Set the copied entry to the first entry
-                cache[index] = copyEntry;
-
-                // Cache Hit, return true
+                //Cache Hit return true
                 return true;
             }
             else if(cacheTag == tag && validBit == 0)
             {
-                //Cache has the same tag as the physical address
-                //Get copy of current entry
-                uint64_t copyEntry = cache[index];
-
-                //Move the address to the first entry
-                for (int j = 0; j < i; j++)
+                //Cache miss, invalid entry
+                if(write_through_no_write_allocate)
                 {
-                    //Move the previous entry to the next entry
-                    cache[index] = cache[index-1];
-
-                    //Set current index to the previous entry
-                    index--;
+                    //Write Through with no write allocate
+                    if(isWrite)
+                    {
+                        //Write data straight to memory
+                        total_mem_reference++;
+                    }
+                    else
+                    {
+                        //Eject invalid address and move each entry over 1 spot
+                        for(int j = 0; j < i; j++)
+                        {
+                            cache[index-j] = cache[index - (1+j)];
+                        }
+                        index -= i;
+                        cache[index] = physicalAddress;
+                    }
                 }
+                else
+                {
+                    //Write-back with write allocation
+                    if(isWrite)
+                    {
+                        //Write new memory location to cache
+                        if(dirtyBit == 1)
+                        {
+                            //Memory has been written to cache, but not saved to memory
+                            total_mem_reference ++;
+                        }
+                        //Eject invalid address and move each entry over 1 spot
+                        for(int j = 0; j < i; j++)
+                        {
+                            cache[index-j] = cache[index - (1+j)];
+                        }
 
-                // Set the copied entry to the first entry, set valid bit to true
-                cache[index] = setValidBit(copyEntry, true);
+                        index -= i;
 
-                // Cache Hit, return true
+                        //Get Cache entry from memory
+                        total_mem_reference++;
+                        cache[index] = physicalAddress;
+
+                        //Set cache entry as dirty
+                        cache[index] = setDirtyBit(physicalAddress, true);
+                    }
+                }
+                //Cache miss, return false
                 return false;
             }
             else if (i == (set_size - 1))
             {
-                //Cache does not have the same tag as the physical address
-                //Insert physical address into the cache and remove the last entry, if not write through && with write
-                if(!write_through_no_write_allocate && !isWrite)
+                //Cache entry not in cache, miss
+                if(write_through_no_write_allocate)
                 {
-                    //set address about to be ejected valid bit to 0
-                    setValidBit(cache[index], false);
-
-                    //Move each entry to the next entry, remove the last entry as it is LRU
-                    for (int j = 0; j < (set_size - 1); j++)
+                    //Write through no write allocate
+                    if (isWrite)
                     {
-                        cache[index] = cache[index-1];
-
-                        index--;
+                        //Write straight to memory
+                        total_mem_reference++;
                     }
-                    cache[index] = physicalAddress;
+                    else
+                    {
+                        //Eject LRU address and move each entry over 1 spot
+                        for(int j = 0; j < i; j++)
+                        {
+                            cache[index-j] = cache[index - (1+j)];
+                        }
 
-                    // Miss on cache, return false
-                    return false;
+                        index -= i;
+
+                        //Read from memory to the cache
+                        total_mem_reference++;
+                        cache[index] = physicalAddress;
+                    }
                 }
                 else
                 {
-                    //Write through, return false for hit
-                    return false;
+                    if (isWrite)
+                    {
+                        //Writing to cache
+                        //Determine if the ejected cache block is dirty and valid
+                        if(dirtyBit == 1 && validBit == 1)
+                        {
+                            //Store data to memory
+                            total_mem_reference++;
+                        }
+
+                        //Eject LRU address and move each entry over 1 spot
+                        for(int j = 0; j < i; j++)
+                        {
+                            cache[index-j] = cache[index - (1+j)];
+                        }
+
+                        index -= i;
+
+                        //Read from memory to the cache
+                        total_mem_reference++;
+                        cache[index] = physicalAddress;
+
+                        //Mark entry as dirty
+                        cache[index] = setDirtyBit(cache[index], true);
+                    }
+                    else
+                    {
+                        //Determine if the ejected cache block is dirty and valid
+                        if(dirtyBit == 1 && validBit == 1)
+                        {
+                            //Store data to memory
+                            total_mem_reference++;
+                        }
+
+                        //Eject LRU address and move each entry over 1 spot
+                        for(int j = 0; j < i; j++)
+                        {
+                            cache[index-j] = cache[index - (1+j)];
+                        }
+
+                        index -= i;
+
+                        //Read from memory to the cache
+                        total_mem_reference++;
+                        cache[index] = physicalAddress;
+
+                        //Mark entry as dirty
+                        cache[index] = setDirtyBit(cache[index], false);
+                    }
                 }
+
+                //Cache missed, return false
+                return false;
             }
             else
             {
@@ -221,6 +359,7 @@ public:
         total_index_bits = log2(num_entries);
         total_offset_bits = log2(line_size);
         total_tag_bits = address_size - total_offset_bits - total_index_bits;
+        total_mem_reference = 0;
 
         cache = static_cast<uint64_t *>(calloc((num_entries * set_size), sizeof(uint64_t)));
 
@@ -283,6 +422,11 @@ public:
             }
             index++;
         }
+    }
+
+    int getTotalMemReference()
+    {
+        return total_mem_reference;
     }
 };
 #endif //MEMORYHIERARCHYSIMULATION_CACHE_H
