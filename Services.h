@@ -1,3 +1,11 @@
+/////////////////////////////////////////////////////
+//  Authors: Alec Hamaker, Morgan McNabb, Alex Wittman
+//  File: Services.h
+//  Class: CSCI 4727-940 Operating Systems
+//  Due Date: December 9, 2020
+//  Creation Date: December 5, 2020
+//  Last Updated: December 7, 2020
+////////////////////////////////////////////////////
 #ifndef SERVICES_H
 #define SERVICES_H
 #include <cmath>
@@ -340,6 +348,12 @@ void page_table_sim(bool TLB_enabled, int& PT_hit, int& phys_page_num, int& PT_m
         {
             PT_miss_count++;
             phys_page_num = PT.lookup(trace.page_number);
+            if(PT_hit == -3)
+            {
+                TLB.invalidate(trace.page_number);
+                int physical_address = page_table_c.page_size * phys_page_num + trace.page_offset;
+                // TODO: Do invalidation stuff with the DC here
+            }
         }
         else
         {
