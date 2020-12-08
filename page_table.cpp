@@ -25,7 +25,9 @@ page_table::page_table(int _virt_page_count, int _phys_frame_count, int _page_si
     }
 }
 
-//returns -1 on a miss, returns -2 if out of range
+//returns -1 on a miss (with a free memory spot), 
+//returns -2 if out of range
+//returns -3 on a miss (with eviction)
 int page_table::lookup(int virtual_page)
 {
     if(virtual_page > virtual_page_count-1)//if virtual page out of bounds
@@ -53,6 +55,7 @@ int page_table::lookup(int virtual_page)
                 deck.pop_back();
                 deck.push_front(entries[virtual_page]);
             }
+            return -1;
         }
         else//we have to evict here
         {
@@ -69,8 +72,8 @@ int page_table::lookup(int virtual_page)
             entries[virtual_page].phys_frame_num = tenant.phys_frame_num;
             
             deck.push_front(entries[virtual_page]);
+            return -3;
         }
-        return -1;//we missed, but we have the entry now...
     }
 }
 
