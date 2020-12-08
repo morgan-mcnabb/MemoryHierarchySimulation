@@ -323,7 +323,7 @@ void display_config_settings()
 
 }
 
-void page_table_sim(bool TLB_enabled, int& PT_hit, int& phys_page_num, int& PT_miss_count, int& PT_hit_count, TLBuffer& TLB, page_table& PT, trace trace)
+void page_table_sim(bool TLB_enabled, int& PT_hit, int& phys_page_num, int& PT_miss_count, int& PT_hit_count, TLBuffer& TLB, page_table& PT, DataCache& cache, trace trace)
 {
     if(TLB_enabled)
     {
@@ -352,6 +352,7 @@ void page_table_sim(bool TLB_enabled, int& PT_hit, int& phys_page_num, int& PT_m
             {
                 TLB.invalidate(trace.page_number);
                 int physical_address = page_table_c.page_size * phys_page_num + trace.page_offset;
+                cache.invalidateCacheEntry(physical_address);
                 // TODO: Do invalidation stuff with the DC here
             }
         }
@@ -404,12 +405,12 @@ void track_traces()
                 else
                 {
                     TLB_miss_count++;
-                    page_table_sim(TLB_enabled, PT_hit, phys_page_num, PT_miss_count, PT_hit_count, TLB, PT, traces[i]);
+                    page_table_sim(TLB_enabled, PT_hit, phys_page_num, PT_miss_count, PT_hit_count, TLB, PT, cache, traces[i]);
                 }
             }
             else if(!TLB_enabled && virtual_addresses_enabled)
             {
-                page_table_sim(TLB_enabled, PT_hit, phys_page_num, PT_miss_count, PT_hit_count, TLB, PT, traces[i]);
+                page_table_sim(TLB_enabled, PT_hit, phys_page_num, PT_miss_count, PT_hit_count, TLB, PT, cache, traces[i]);
             }
             
             if(TLB_enabled && virtual_addresses_enabled)

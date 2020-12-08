@@ -48,7 +48,6 @@ private:
 
     unsigned int getValidBit(uint64_t physicalAddress) {
         physicalAddress = physicalAddress >> (address_size + 1);
-        printf("%jx\n", physicalAddress);
         return physicalAddress;
     }
 
@@ -205,6 +204,7 @@ private:
                 index++;
             }
         }
+        return false;
     }
 
 
