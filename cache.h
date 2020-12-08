@@ -46,6 +46,12 @@ private:
         return physicalAddress;
     }
 
+    unsigned int getValidBit(uint64_t physicalAddress) {
+        physicalAddress = physicalAddress >> (address_size + 1);
+        printf("%jx\n", physicalAddress);
+        return physicalAddress;
+    }
+
     /*
      * Checks the cache to see if address is there or not, adds the address if there is a miss.
      * Returns Hit(true) or Miss(false)
@@ -70,6 +76,7 @@ private:
             //Get cache entry from the cache
             uint64_t cacheEntry = cache[index];
             unsigned int cacheTag = getTag(cacheEntry);
+            unsigned int validBit = getValidBit(cacheEntry);
 
             //Determine if anything is in the given cache position
             if (cacheEntry == 0)
@@ -121,7 +128,7 @@ private:
                     return false;
                 }
             }
-            else if(cacheTag == tag)
+            else if(cacheTag == tag && validBit == 1)
             {
                 //Cache has the same tag as the physical address
                 //Get copy of current entry
@@ -142,6 +149,28 @@ private:
 
                 // Cache Hit, return true
                 return true;
+            }
+            else if(cacheTag == tag && validBit == 0)
+            {
+                //Cache has the same tag as the physical address
+                //Get copy of current entry
+                uint64_t copyEntry = cache[index];
+
+                //Move the address to the first entry
+                for (int j = 0; j < i; j++)
+                {
+                    //Move the previous entry to the next entry
+                    cache[index] = cache[index-1];
+
+                    //Set current index to the previous entry
+                    index--;
+                }
+
+                // Set the copied entry to the first entry, set valid bit to true
+                cache[index] = setValidBit(copyEntry, true);
+
+                // Cache Hit, return true
+                return false;
             }
             else if (i == (set_size - 1))
             {
@@ -240,6 +269,20 @@ public:
     bool write(unsigned int physicalAddress)
     {
         return checkCache(physicalAddress, true);
+    }
+
+    void invalidateCacheEntry(uint64_t physicalAddress)
+    {
+        unsigned int index = getIndex(physicalAddress);
+        unsigned int tag = getTag(physicalAddress);
+        for (int i = 0; i < set_size; i++)
+        {
+            if(tag == getTag(cache[index]))
+            {
+                cache[index] = setValidBit(cache[index], false);
+            }
+            index++;
+        }
     }
 };
 #endif //MEMORYHIERARCHYSIMULATION_CACHE_H
