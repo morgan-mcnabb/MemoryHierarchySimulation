@@ -315,6 +315,39 @@ void display_config_settings()
 
 }
 
+void page_table_sim(bool TLB_enabled, int& PT_hit, int& phys_page_num, int& PT_miss_count, int& PT_hit_count, TLBuffer& TLB, page_table& PT, trace trace)
+{
+    if(TLB_enabled)
+    {
+        PT_hit = PT.lookup(trace.page_number);
+        if(PT_hit < 0)//if PT misses
+        {
+            PT_miss_count++;
+            phys_page_num = PT.lookup(trace.page_number);
+            TLB.insert(trace.page_number, phys_page_num);
+        }
+        else
+        {
+            PT_hit_count++;
+            phys_page_num = PT_hit;
+            TLB.insert(trace.page_number, PT_hit);
+        }
+    }
+    else
+    {
+        PT_hit = PT.lookup(trace.page_number);
+        if(PT_hit < 0)//if PT misses
+        {
+            PT_miss_count++;
+            phys_page_num = PT.lookup(trace.page_number);
+        }
+        else
+        {
+            PT_hit_count++;
+            phys_page_num = PT_hit;
+        }
+    }
+}
 void track_traces()
 {
     //print the header
@@ -328,6 +361,7 @@ void track_traces()
 
     if(traces.size() > 0)
     {
+        // declaration of key simulation variables
         TLBuffer TLB(TLB_c.num_entries);
 
         page_table PT(page_table_c.num_virtual_pages, 
@@ -336,76 +370,54 @@ void track_traces()
         DataCache cache(cache_c.num_entries, cache_c.set_size, 
                 cache_c.line_size, cache_c.write_through_no_write_allocate,
                 page_table_c.page_size, page_table_c.num_physical_pages);
+
+        string TLB_res;
+        string PT_res;
+        bool TLB_hit;
+        int PT_hit;
+        int phys_page_num;
+        int no_virtualization_phys_page_num;
+
         for(int i = 0; i < (int)traces.size(); i++)
         {
-            bool TLB_hit = TLB.lookup(traces[i].page_number);
-            bool PT_hit_or_miss;
-            int phys_page_num;
-            if(virtual_addresses_enabled)
+            TLB_res = "";
+            PT_res = "";
+            if(virtual_addresses_enabled && TLB_enabled)
             {
+                TLB_hit = TLB.lookup(traces[i].page_number);
                 if(TLB_hit)
                     TLB_hit_count++;
                 else
                 {
                     TLB_miss_count++;
-                    //lookup the page in the PT here..
-                    int PT_hit = PT.lookup(traces[i].page_number);
-                    if(PT_hit < 0)//if PT misses
-                    {
-                        PT_miss_count++;
-                        PT_hit_or_miss = false;
-                        phys_page_num = PT.lookup(traces[i].page_number);
-                        TLB.insert(traces[i].page_number, phys_page_num);
-                    }
-                    else
-                    {
-                        PT_hit_count++;
-                        PT_hit_or_miss = true;
-                        phys_page_num = PT_hit;
-                        TLB.insert(traces[i].page_number, PT_hit);
-                    }
+                    page_table_sim(TLB_enabled, PT_hit, phys_page_num, PT_miss_count, PT_hit_count, TLB, PT, traces[i]);
                 }
             }
-            else if(!TLB_enabled)
+            else if(!TLB_enabled && virtual_addresses_enabled)
             {
-                int PT_hit = PT.lookup(traces[i].page_number);
-                if(PT_hit < 0)//if PT misses
-                {
-                    PT_miss_count++;
-                    PT_hit_or_miss = false;
-                    phys_page_num = PT.lookup(traces[i].page_number);
-                    TLB.insert(traces[i].page_number, phys_page_num);
-                }
-                else
-                {
-                    PT_hit_count++;
-                    PT_hit_or_miss = true;
-                    phys_page_num = PT_hit;
-                    TLB.insert(traces[i].page_number, PT_hit);
-                }
+                page_table_sim(TLB_enabled, PT_hit, phys_page_num, PT_miss_count, PT_hit_count, TLB, PT, traces[i]);
             }
             
-            
-            
-            
-            
-            
-            
-            string TLB_res = (TLB_hit) ? "hit" : "miss";
-            string PT_res = (PT_hit_or_miss) ? "hit" : "miss";
+            if(TLB_enabled && virtual_addresses_enabled)
+                TLB_res = TLB_hit ? "hit" : "miss";
 
-            unsigned int physicalAddress = PT.translate(traces[i].page_number, traces[i].page_offset);
+            if(virtual_addresses_enabled && !TLB_hit)
+            {
+                PT_res = PT_hit >= 0 ? "hit" : "miss";
+            }
+            if(!virtual_addresses_enabled)
+                no_virtualization_phys_page_num = traces[i].input_address >> (int)log2(page_table_c.page_size);
+
+
+            unsigned int physicalAddress = virtual_addresses_enabled ? PT.translate(traces[i].page_number, traces[i].page_offset)
+                                                                     : traces[i].input_address;
             unsigned int DCTag = cache.getTag(physicalAddress);
             unsigned int DCIndex = cache.getIndex(physicalAddress);
             string DT_res;
             bool access_type_success;
 
-            if (traces[i].access_type.compare("R") == 0)
-            {
-                access_type_success = cache.read(physicalAddress);
-            }
-            else
-                access_type_success = cache.write(physicalAddress);
+            access_type_success = traces[i].access_type.compare("R") == 0 ? cache.read(physicalAddress) 
+                                                                          : cache.write(physicalAddress);
                
             if(access_type_success)
             {
@@ -417,34 +429,25 @@ void track_traces()
                 DT_res = "miss";
                 DC_miss_count++;
             }
-           
-            string formatter = "%08x %6x %4x %-4s %-4s %4x %6x %3x %-4s\n";
-            char* out_str = (char*)malloc(100);
-            sprintf(out_str, formatter.c_str(), 
-                traces[i].input_address, traces[i].page_number, 
-                traces[i].page_offset, TLB_res.c_str(), PT_res.c_str(), 
-                phys_page_num, DCTag, DCIndex, DT_res.c_str());
 
-            if(!virtual_addresses_enabled)
+            string formatter = virtual_addresses_enabled ? "%08x %6x %4x %-4s %-4s %4x %6x %3x %-4s\n"
+                                                         : "%08s %6s %4x %-4s %-4s %4x %6x %3x %-4s\n";
+            char* out_str = (char*)malloc(100);
+            if(virtual_addresses_enabled)
             {
-                string formatter = "%08s %6s %4x %-4s %-4s %4x %6x %3x %-4s\n";
-                sprintf(out_str, formatter.c_str(),
-                    "n/a", "n/a", traces[i].page_offset, "n/a", "n/a", 
+                sprintf(out_str, formatter.c_str(), 
+                    traces[i].input_address, traces[i].page_number, 
+                    traces[i].page_offset, TLB_res.c_str(), PT_res.c_str(), 
                     phys_page_num, DCTag, DCIndex, DT_res.c_str());
             }
-
-            else if(!TLB_enabled)
+            else
+            {
                 sprintf(out_str, formatter.c_str(), 
-                    traces[i].input_address, traces[i].page_number, 
-                    traces[i].page_offset, "n/a", PT_res.c_str(), 
-                    phys_page_num, DCTag, DCIndex, DT_res.c_str());
+                    "", "", 
+                    traces[i].page_offset, TLB_res.c_str(), PT_res.c_str(), 
+                    no_virtualization_phys_page_num, DCTag, DCIndex, DT_res.c_str());
+            }
 
-            else if(TLB_enabled && TLB_hit)
-                sprintf(out_str, formatter.c_str(), 
-                    traces[i].input_address, traces[i].page_number, 
-                    traces[i].page_offset, TLB_res.c_str(), "n/a", 
-                    phys_page_num, DCTag, DCIndex, DT_res.c_str());
-            
             cout << out_str;
             free(out_str);
             printf("\n");
