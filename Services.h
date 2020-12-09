@@ -1,3 +1,11 @@
+/////////////////////////////////////////////////////
+//  Authors: Alec Hamaker, Morgan McNabb, Alex Wittman
+//  File: Services.h
+//  Class: CSCI 4727-940 Operating Systems
+//  Due Date: December 9, 2020
+//  Creation Date: December 5, 2020
+//  Last Updated: December 7, 2020
+////////////////////////////////////////////////////
 #ifndef SERVICES_H
 #define SERVICES_H
 #include <cmath>
@@ -231,21 +239,23 @@ void parse_traces(std::string filename)
     std::string line;
     const std::string delimiter = ":";
     std::fstream file(filename);
-    long hexx;
-    int page_offset;
-    int page_number;
-    int offset_mask = 0xffffffff >> (32 - (int)std::log2(page_table_c.page_size));
-    int page_number_mask =  0xffffffff << (int)std::log2(page_table_c.page_size);
-
+    unsigned int hexx;
+    unsigned int page_offset;
+    unsigned int page_number;
+    
     while(getline(file, line))
     {
         std::string access_type(line.begin(), std::find(line.begin(), line.end(), ':'));
         std::string virtual_address(std::find(line.begin(), line.end(), ':') + 1, line.end());
+        int logical_address_size = virtual_address.size();
         hexx = std::stol(virtual_address, nullptr, 16);
-        page_offset = hexx & offset_mask;
-        page_number = hexx & page_number_mask;
-        page_number = page_number >> (int)std::log2(page_table_c.page_size);
 
+        hexx = hexx << 32 - (int)(std::log2(page_table_c.page_size) + std::log2(page_table_c.num_virtual_pages));
+        hexx = hexx >> 32 - (int)(std::log2(page_table_c.page_size) + std::log2(page_table_c.num_virtual_pages));
+
+        page_number = hexx / page_table_c.page_size;
+        page_offset = hexx % page_table_c.page_size;
+ 
         trace tmp;
         tmp.page_offset = page_offset;
         tmp.page_number = page_number;
@@ -339,6 +349,12 @@ void page_table_sim(bool TLB_enabled, int& PT_hit, int& phys_page_num, int& PT_m
         {
             PT_miss_count++;
             phys_page_num = PT.lookup(trace.page_number);
+            if(PT_hit == -3)
+            {
+                TLB.invalidate(trace.page_number);
+                int physical_address = page_table_c.page_size * phys_page_num + trace.page_offset;
+                // TODO: Do invalidation stuff with the DC here
+            }
         }
         else
         {
@@ -450,8 +466,25 @@ void track_traces()
             cout << out_str;
             free(out_str);
             printf("\n");
+            
         }
     }
+}
+
+void clear_globals()
+{
+     TLB_hit_count = 0;
+     TLB_miss_count = 0;
+     PT_hit_count = 0;
+     PT_miss_count = 0;
+     DC_hit_count = 0;
+     DC_miss_count = 0;
+     read_count = 0;
+     write_count = 0;
+     main_mem_ref_count = 0;
+     PT_ref_count = 0;
+     disk_ref_count = 0;
+     traces.clear();
 }
 
 void print_statistics()
@@ -493,6 +526,8 @@ void print_statistics()
     }
     else
         printf("%-25s %-3d\n", "Disk references:", read_count+write_count);
+    
+    clear_globals();
 }
 
 
