@@ -467,8 +467,26 @@ void track_traces()
             cout << out_str;
             free(out_str);
             printf("\n");
+            
         }
     }
+}
+
+void clear_globals()
+{
+    std::cout << "qwerqwerqwer" << std::endl;
+     TLB_hit_count = 0;
+     TLB_miss_count = 0;
+     PT_hit_count = 0;
+     PT_miss_count = 0;
+     DC_hit_count = 0;
+     DC_miss_count = 0;
+     read_count = 0;
+     write_count = 0;
+     main_mem_ref_count = 0;
+     PT_ref_count = 0;
+     disk_ref_count = 0;
+     traces.clear();
 }
 
 void print_statistics()
@@ -510,6 +528,8 @@ void print_statistics()
     }
     else
         printf("%-25s %-3d\n", "Disk references:", read_count+write_count);
+    
+    clear_globals();
 }
 
 
