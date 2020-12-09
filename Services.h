@@ -104,40 +104,39 @@ int convert_config_data(std::string line)
 
 bool check_config_validity(int config_value, int lower_val, int upper_val, bool check_power_of_two, std::string type)
 {
-   if(upper_val > 0)
-   {
+    if(upper_val > 0)
+    {
         if(config_value < lower_val || config_value > upper_val)
         {
             std::cout << "Error: " << type << " must be between " << lower_val 
-                      << " and " << upper_val << ". Received " << config_value
-                      << ". Exiting..." << std::endl;
+                << " and " << upper_val << ". Received " << config_value
+                << ". Exiting..." << std::endl;
             //exit(-1);
             return false;
         }
-   }
-   else
-   {
+    }
+    else
+    {
         if(config_value < lower_val)
         {
             std::cout << "Error: " << type << " must be larger " << lower_val
-                      << ". Received " << config_value << ". Exiting..." << std::endl;
+                << ". Received " << config_value << ". Exiting..." << std::endl;
             //exit(-1);
             return false;
         }
-   }
-
-   if(check_power_of_two)
-   {
+    }
+    if(check_power_of_two)
+    {
         if((config_value & (config_value - 1)) != 0)
         {
             std::cout << "Error: " << type << " must be a power of two. Received "
-                      << config_value << ". Exiting..." << std::endl;
+                << config_value << ". Exiting..." << std::endl;
             //exit(-1);
             return false;
         }
-   }
+    }
 
-   return true;
+    return true;
 }
 
 bool parse_config(std::string filename)
@@ -150,7 +149,7 @@ bool parse_config(std::string filename)
         return false;
     }
     bool valid_input = true;
-    
+
     // to know what data we are reading
     int file_line_number = 0;
     while(getline(file, line))
@@ -162,50 +161,50 @@ bool parse_config(std::string filename)
                 TLB_c.num_entries = convert_config_data(line);
                 valid_input = check_config_validity(TLB_c.num_entries, 1, 256, 
                         true, "DTLB number of entries");
-                
+
                 break;
             case 5:
                 page_table_c.num_virtual_pages = convert_config_data(line);
                 valid_input = check_config_validity
                     (page_table_c.num_virtual_pages, 1, 8192, true, 
-                        "Page table number of virtual pages");
-               
+                     "Page table number of virtual pages");
+
                 break;
             case 6:
                 page_table_c.num_physical_pages = convert_config_data(line);
                 valid_input = check_config_validity
                     (page_table_c.num_physical_pages, 1, 1024, true, 
-                        "Page table number of physical pages");
-                
+                     "Page table number of physical pages");
+
                 break;
             case 7:
                 page_table_c.page_size = convert_config_data(line);
                 valid_input = check_config_validity(page_table_c.page_size, 0,
-                       0, true, "Page table page size");
-                
+                        0, true, "Page table page size");
+
                 break;
             case 10:
 
                 cache_c.num_entries = convert_config_data(line);
                 valid_input = check_config_validity
                     (cache_c.num_entries, 1, 1024, true, 
-                        "Cache number of entries");
-                
+                     "Cache number of entries");
+
                 break;
             case 11:
                 cache_c.set_size = convert_config_data(line);
                 valid_input = check_config_validity(cache_c.set_size, 1, 8,
                         true, "Cache set size");
-                
+
                 break;
             case 12:
                 cache_c.line_size = convert_config_data(line);
                 valid_input = check_config_validity(cache_c.line_size, 8, 0, 
                         true, "Cache line size");
-                
+
                 break;
-                
-            // for the next three cases, 121 is 'y' in ascii
+
+                // for the next three cases, 121 is 'y' in ascii
             case 13:
                 cache_c.write_through_no_write_allocate =
                     convert_config_data(line) == 121;
@@ -266,7 +265,7 @@ void display_config_settings()
     std::cout << "Number of virtual pages is " 
         + to_string(page_table_c.num_virtual_pages) + ".\n";
     std::cout << "Number of physical pages is "
-       + to_string(page_table_c.num_physical_pages) + ".\n";
+        + to_string(page_table_c.num_physical_pages) + ".\n";
     std::cout << "Each page contains " + to_string(page_table_c.page_size) 
         + " bytes.\n";
     std::cout << "Number of bits used for the page table index is "
@@ -397,7 +396,7 @@ void track_traces()
             {
                 page_table_sim(TLB_enabled, PT_hit, phys_page_num, PT_miss_count, PT_hit_count, TLB, PT, traces[i]);
             }
-            
+
             if(TLB_enabled && virtual_addresses_enabled)
                 TLB_res = TLB_hit ? "hit" : "miss";
 
@@ -410,15 +409,15 @@ void track_traces()
 
 
             unsigned int physicalAddress = virtual_addresses_enabled ? PT.translate(traces[i].page_number, traces[i].page_offset)
-                                                                     : traces[i].input_address;
+                : traces[i].input_address;
             unsigned int DCTag = cache.getTag(physicalAddress);
             unsigned int DCIndex = cache.getIndex(physicalAddress);
             string DT_res;
             bool access_type_success;
 
             access_type_success = traces[i].access_type.compare("R") == 0 ? cache.read(physicalAddress) 
-                                                                          : cache.write(physicalAddress);
-               
+                : cache.write(physicalAddress);
+
             if(access_type_success)
             {
                 DT_res = "hit";
@@ -431,21 +430,21 @@ void track_traces()
             }
 
             string formatter = virtual_addresses_enabled ? "%08x %6x %4x %-4s %-4s %4x %6x %3x %-4s\n"
-                                                         : "%08s %6s %4x %-4s %-4s %4x %6x %3x %-4s\n";
+                : "%08s %6s %4x %-4s %-4s %4x %6x %3x %-4s\n";
             char* out_str = (char*)malloc(100);
             if(virtual_addresses_enabled)
             {
                 sprintf(out_str, formatter.c_str(), 
-                    traces[i].input_address, traces[i].page_number, 
-                    traces[i].page_offset, TLB_res.c_str(), PT_res.c_str(), 
-                    phys_page_num, DCTag, DCIndex, DT_res.c_str());
+                        traces[i].input_address, traces[i].page_number, 
+                        traces[i].page_offset, TLB_res.c_str(), PT_res.c_str(), 
+                        phys_page_num, DCTag, DCIndex, DT_res.c_str());
             }
             else
             {
                 sprintf(out_str, formatter.c_str(), 
-                    "", "", 
-                    traces[i].page_offset, TLB_res.c_str(), PT_res.c_str(), 
-                    no_virtualization_phys_page_num, DCTag, DCIndex, DT_res.c_str());
+                        "", "", 
+                        traces[i].page_offset, TLB_res.c_str(), PT_res.c_str(), 
+                        no_virtualization_phys_page_num, DCTag, DCIndex, DT_res.c_str());
             }
 
             cout << out_str;
