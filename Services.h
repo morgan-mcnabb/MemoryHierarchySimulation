@@ -474,7 +474,6 @@ void track_traces()
 
 void clear_globals()
 {
-    std::cout << "qwerqwerqwer" << std::endl;
      TLB_hit_count = 0;
      TLB_miss_count = 0;
      PT_hit_count = 0;
