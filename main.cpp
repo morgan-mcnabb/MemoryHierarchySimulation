@@ -16,8 +16,14 @@
 #include "page_table.h"
 #include "Services.h"
 
+void clear_screen()
+{
+    system("clear");
+}
+
 void print_menu()
 {
+    clear_screen();
     std::cout << "1. Enter name of configuration file for the simulation." << std::endl
               << "2. Enter name of the trace file." << std::endl
               << "3. Begin simulation." << std::endl
@@ -44,19 +50,27 @@ int main()
 
             case 1:
                 // flush the buffer
+                clear_screen();
+                std::cout << "1. Enter name of configuration file for the simulation." << std::endl;
                 std::cin.ignore();
                 std::getline(std::cin, config_filename);
                 config_entered = config_filename.size() > 0;
+                clear_screen();
                 break;
 
             case 2:
                 // flush the buffer
+                clear_screen();
+                std::cout<< "2. Enter name of the trace file." << std::endl;
                 std::cin.ignore();
                 std::getline(std::cin, trace_filename);
                 trace_entered = trace_filename.size() > 0;
+                clear_screen();
                 break;
 
             case 3:
+                clear_screen();
+                std::cout << "3. Begin simulation." << std::endl;
                 if(config_entered && trace_entered)
                 {
                     if(parse_config(config_filename))
@@ -65,6 +79,9 @@ int main()
                         parse_traces(trace_filename);
                         track_traces();
                         print_statistics();
+                        std::cout << "Press enter to continue...";
+                        std::cin.ignore();
+                        std::cin.get();
                     }
                     else
                         std::cout << "There was an error parsing the config." << std::endl;
@@ -79,6 +96,7 @@ int main()
                 break;
 
             case 4:
+                clear_screen();
                 std::cout << "Exiting simulation." << std::endl;
                 break;
 
